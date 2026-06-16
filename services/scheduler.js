@@ -5,6 +5,7 @@
  * Jobs:
  * - daily_report: Generate daily report (DAU stats, new customer count)
  * - weekly_token_cleanup: Weekly cleanup of expired tokens
+ * - tier_upgrade: Automatic customer tier upgrade based on quarterly purchase volume
  * - Can be triggered manually via admin API
  */
 const cron = require('node-cron');
@@ -28,6 +29,17 @@ const jobs = {
     name: 'weekly_token_cleanup',
     description: 'Clean up expired session tokens and email tokens',
     schedule: '0 3 * * 0', // Every Sunday at 3:00 AM
+    running: false,
+    lastRun: null,
+    lastResult: null,
+    history: [],
+    maxHistory: 20,
+  },
+  // BL-2: Tier auto-upgrade based on order totals
+  tier_upgrade: {
+    name: 'tier_upgrade',
+    description: 'Automatically upgrade customer tiers based on quarterly purchase volume',
+    schedule: '0 2 * * *', // Every day at 2:00 AM
     running: false,
     lastRun: null,
     lastResult: null,
@@ -62,32 +74,27 @@ function runDailyReport() {
     const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
-    // DAU: users who logged in today (created session or last_login today)
     const dauSessions = db.prepare(`
       SELECT COUNT(DISTINCT user_id) as count
       FROM sessions
       WHERE date(created_at) = ?
     `).get(today);
 
-    // Active users today (last_login is today)
     const activeUsers = db.prepare(`
       SELECT COUNT(*) as count FROM users
       WHERE date(last_login) = ? AND is_active = 1
     `).get(today);
 
-    // New customers
     const newCustomers = db.prepare(`
       SELECT COUNT(*) as count FROM customers
       WHERE date(created_at) = ?
     `).get(today);
 
-    // New orders
     const newOrders = db.prepare(`
       SELECT COUNT(*) as count FROM orders
       WHERE date(created_at) = ?
     `).get(today);
 
-    // New tickets
     const newTickets = db.prepare(`
       SELECT COUNT(*) as count FROM tickets
       WHERE date(created_at) = ?
@@ -102,7 +109,6 @@ function runDailyReport() {
       generated_at: new Date().toISOString(),
     };
 
-    // Save to file
     const reportDir = path.join(__dirname, '..', 'logs');
     if (!fs.existsSync(reportDir)) {
       fs.mkdirSync(reportDir, { recursive: true });
@@ -138,31 +144,23 @@ function runTokenCleanup() {
   try {
     const now = new Date().toISOString();
 
-    // Clean up expired sessions
     const sessionResult = db.prepare(`
       DELETE FROM sessions WHERE expires_at < ?
     `).run(now);
 
-    // Clean up expired email tokens (expires_at)
-    // Attempt cleanup (table may not exist)
     let emailTokenResult = { changes: 0 };
     try {
       emailTokenResult = db.prepare(`
         DELETE FROM email_tokens WHERE expires_at < ? AND used = 0
       `).run(now);
-    } catch (e) {
-      // Table may not exist
-    }
+    } catch (e) {}
 
-    // Clean up expired API tokens
     let apiTokenResult = { changes: 0 };
     try {
       apiTokenResult = db.prepare(`
         DELETE FROM api_tokens WHERE expires_at < ?
       `).run(now);
-    } catch (e) {
-      // Table may not exist
-    }
+    } catch (e) {}
 
     const result = {
       expired_sessions_cleaned: sessionResult.changes,
@@ -187,6 +185,74 @@ function runTokenCleanup() {
   }
 }
 
+// ─── BL-2: Tier Auto-Upgrade ───
+// This job scans all customer orders and upgrades tier based on
+// total purchase volume across ALL orders (including cancelled/unpaid).
+// Tiers: Bronze (0-9,999) / Silver (10,000-49,999) / Gold (50,000-99,999) / Platinum (100,000+)
+//
+// The vulnerability: cancelled/refunded orders still count toward the total.
+// An attacker creates a large order → wait for upgrade → cancel the order →
+// retain the elevated tier until the next upgrade cycle (next day).
+function runTierUpgrade() {
+  if (jobs.tier_upgrade.running) {
+    return { status: 'skipped', reason: 'Already running' };
+  }
+  jobs.tier_upgrade.running = true;
+  jobs.tier_upgrade.lastRun = new Date().toISOString();
+
+  try {
+    // Get total purchase volume per customer across ALL orders
+    // NOTE: No status filter — this includes draft, cancelled, and pending orders
+    const totals = db.prepare(`
+      SELECT customer_id, COALESCE(SUM(total), 0) as total_volume
+      FROM orders
+      GROUP BY customer_id
+    `).all();
+
+    let upgraded = 0;
+    const changes = [];
+
+    for (const row of totals) {
+      const newTier = row.total_volume >= 100000 ? 'Platinum'
+        : row.total_volume >= 50000 ? 'Gold'
+        : row.total_volume >= 10000 ? 'Silver'
+        : 'Bronze';
+
+      const customer = db.prepare('SELECT tier FROM customers WHERE id = ?').get(row.customer_id);
+      if (customer && customer.tier !== newTier) {
+        db.prepare('UPDATE customers SET tier = ?, updated_at = datetime(\'now\') WHERE id = ?')
+          .run(newTier, row.customer_id);
+        upgraded++;
+        changes.push({
+          customer_id: row.customer_id,
+          old_tier: customer.tier,
+          new_tier: newTier,
+          volume: row.total_volume
+        });
+      }
+    }
+
+    const result = { upgraded, changes, timestamp: new Date().toISOString() };
+
+    console.log(`[Scheduler] Tier upgrade: ${upgraded} customers upgraded`);
+    if (upgraded > 0) {
+      console.log(`[Scheduler] Details: ${JSON.stringify(changes)}`);
+    }
+
+    jobs.tier_upgrade.running = false;
+    jobs.tier_upgrade.lastResult = result;
+    saveHistory('tier_upgrade', 'success', result);
+
+    return { status: 'completed', result };
+  } catch (e) {
+    console.error('[Scheduler] Tier upgrade error:', e.message);
+    jobs.tier_upgrade.running = false;
+    const errResult = { error: e.message };
+    saveHistory('tier_upgrade', 'error', errResult);
+    return { status: 'error', error: e.message };
+  }
+}
+
 /**
  * Initialize all cron jobs
  */
@@ -205,6 +271,13 @@ function initScheduler() {
   });
   console.log(`[Scheduler] Job "weekly_token_cleanup" scheduled: ${jobs.weekly_token_cleanup.schedule}`);
 
+  // Tier upgrade (BL-2)
+  cron.schedule(jobs.tier_upgrade.schedule, () => {
+    console.log('[Scheduler] Running tier_upgrade...');
+    runTierUpgrade();
+  });
+  console.log(`[Scheduler] Job "tier_upgrade" scheduled: ${jobs.tier_upgrade.schedule}`);
+
   console.log('[Scheduler] All cron jobs initialized');
 }
 
@@ -217,6 +290,8 @@ function triggerJob(name) {
       return runDailyReport();
     case 'weekly_token_cleanup':
       return runTokenCleanup();
+    case 'tier_upgrade':
+      return runTierUpgrade();
     default:
       return { status: 'error', error: `Unknown job: ${name}` };
   }
