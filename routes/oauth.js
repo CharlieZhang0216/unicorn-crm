@@ -283,7 +283,7 @@ async function handleOAuthLogin(res, oauthData) {
 
   db.prepare('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
 
-  res.cookie('session_token', sessionToken, { httpOnly: true, sameSite: 'strict' });
+  res.cookie('session_token', sessionToken, { httpOnly: true, sameSite: 'strict', secure: true });
   res.redirect('/');
 }
 
