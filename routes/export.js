@@ -12,6 +12,13 @@ const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 
+function requireAdmin(req, res, next) {
+  if (!req.currentUser || req.currentUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+}
+
 // ─── Middleware: Authentication ───────────────────────────────────
 
 // ─── Anti CSV Injection Sanitizer ─────────────────────────────────
@@ -86,7 +93,7 @@ function sendCSV(res, filename, headers, rows) {
 // GET /export/customers — Export customer list as CSV
 // ═══════════════════════════════════════════════════════════════════
 
-router.get('/customers', requireAuth, (req, res) => {
+router.get("/customers", requireAuth, requireAdmin, (req, res) => {
   const db = req.app.locals.db;
   if (!db) return res.status(500).json({ error: 'Database not available' });
 
@@ -104,7 +111,7 @@ router.get('/customers', requireAuth, (req, res) => {
 // GET /export/orders — Export order list as CSV
 // ═══════════════════════════════════════════════════════════════════
 
-router.get('/orders', requireAuth, (req, res) => {
+router.get("/orders", requireAuth, requireAdmin, (req, res) => {
   const db = req.app.locals.db;
   if (!db) return res.status(500).json({ error: 'Database not available' });
 
@@ -122,7 +129,7 @@ router.get('/orders', requireAuth, (req, res) => {
 // GET /export/tickets — Export ticket list as CSV
 // ═══════════════════════════════════════════════════════════════════
 
-router.get('/tickets', requireAuth, (req, res) => {
+router.get("/tickets", requireAuth, requireAdmin, (req, res) => {
   const db = req.app.locals.db;
   if (!db) return res.status(500).json({ error: 'Database not available' });
 

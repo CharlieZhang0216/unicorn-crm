@@ -15,20 +15,19 @@ const fs = require('fs');
 // Authentication middleware — must be logged in
 function requireAuth(req, res, next) {
   const token = req.cookies?.session_token;
-  if (!token) {
-    return res.status(401).redirect('/auth/login');
-  }
+  if (!token) return res.status(401).redirect('/auth/login');
   const session = db.prepare('SELECT * FROM sessions WHERE token = ?').get(token);
-  if (!session) {
-    res.clearCookie('session_token');
-    return res.status(401).redirect('/auth/login');
-  }
+  if (!session) { res.clearCookie('session_token'); return res.status(401).redirect('/auth/login'); }
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(session.user_id);
-  if (!user) {
-    return res.status(401).redirect('/auth/login');
-  }
+  if (!user) return res.status(401).redirect('/auth/login');
   req.currentUser = user;
-  res.locals.user = user;
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  if (!req.currentUser || req.currentUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
   next();
 }
 
@@ -67,7 +66,7 @@ const EXPIRY_OPTIONS = {
  * GET /api-tokens
  * List current user's API tokens
  */
-router.get('/', requireAuth, (req, res) => {
+router.get('/', requireAuth, requireAdmin, (req, res) => {
   const tokens = db.prepare(`
     SELECT id, name, scope, expires_at, last_used_at, created_at
     FROM api_tokens
@@ -86,7 +85,7 @@ router.get('/', requireAuth, (req, res) => {
  * POST /api-tokens
  * Create a new API token
  */
-router.post('/', requireAuth, (req, res) => {
+router.post('/', requireAuth, requireAdmin, (req, res) => {
   const { name, scope, expiry } = req.body;
 
   if (!name || !name.trim()) {
@@ -146,7 +145,7 @@ router.post('/', requireAuth, (req, res) => {
  * DELETE /api-tokens/:id
  * Revoke an API token
  */
-router.delete('/:id', requireAuth, (req, res) => {
+router.delete('/:id', requireAuth, requireAdmin, (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     return res.status(400).json({ error: 'Invalid token ID' });
@@ -168,7 +167,7 @@ router.delete('/:id', requireAuth, (req, res) => {
 });
 
 // POST for form-based delete (browser forms only support GET/POST)
-router.post('/:id/delete', requireAuth, (req, res) => {
+router.post('/:id/delete', requireAuth, requireAdmin, (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     return res.redirect('/api-tokens');

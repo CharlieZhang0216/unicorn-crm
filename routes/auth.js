@@ -3,6 +3,19 @@ const router = express.Router();
 const db = require('../config/database');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
+// Security: Password strength requirements
+function validatePasswordStrength(password) {
+  const errors = [];
+  if (password.length < 8) errors.push('at least 8 characters');
+  if (!/[A-Z]/.test(password)) errors.push('at least one uppercase letter');
+  if (!/[a-z]/.test(password)) errors.push('at least one lowercase letter');
+  if (!/[0-9]/.test(password)) errors.push('at least one digit');
+  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>\/?]/.test(password)) errors.push('at least one special character');
+  const blacklist = ['password', 'password123', 'admin123', '12345678', 'qwerty123', 'letmein', 'welcome1', 'iloveyou', 'monkey', 'dragon'];
+  if (blacklist.includes(password.toLowerCase())) errors.push('not a commonly used password');
+  return errors;
+}
+
 
 // Rate limiting helper (in-memory)
 const loginAttempts = {};
@@ -168,9 +181,10 @@ router.post('/register', (req, res) => {
     return renderRegister(res, { error: 'Invalid invite code. Registration is by invitation only.', success: null });
   }
 
-  // Password strength validation
-  if (password.length < 8) {
-    return renderRegister(res, { error: 'Password must be at least 8 characters long.', success: null });
+  // Password strength validation (comprehensive)
+  const passwordErrors = validatePasswordStrength(password);
+  if (passwordErrors.length > 0) {
+    return renderRegister(res, { error: 'Weak password: ' + passwordErrors.join(', ') + '.', success: null });
   }
 
   const existingUser = db.prepare('SELECT * FROM users WHERE username = ?').get(username);

@@ -11,6 +11,7 @@
  */
 const express = require('express');
 const router = express.Router();
+const { NoSchemaIntrospectionCustomRule } = require("graphql");
 const { graphqlHTTP } = require('express-graphql');
 const {
   GraphQLSchema,
