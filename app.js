@@ -124,6 +124,7 @@ app.use('/api/admin', adminRouter);
 app.use('/search', errorsRouter);
 app.use('/profile', profileRouter);
 app.use('/customers', customersRouter);
+require('./routes/customers-batch').batchRoutes(customersRouter);
 app.use('/orders', ordersRouter);
 app.use('/tickets', ticketsRouter);
 app.use('/reports', require('./routes/reports'));
