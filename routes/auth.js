@@ -101,30 +101,20 @@ router.post('/login', (req, res) => {
     return renderLogin(res, { error: 'Please provide both username and password.' });
   }
 
-  // Rate limiting
-  const rateCheck = checkRateLimit(username, req.ip);
-  if (rateCheck.blocked) {
-    return renderLogin(res, { error: `Too many login attempts. Please try again in ${rateCheck.retryAfter} seconds.` });
-  }
-
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
 
-  if (!user) {
-    recordAttempt(username, req.ip);
-    return renderLogin(res, { error: 'Invalid username or password.' });
-  }
-
   // FIX: Support both legacy plaintext passwords and new scrypt-hashed passwords
-  const pwdMatches = user.password.includes(':')
-    ? (() => {
-        const [salt, hash] = user.password.split(':');
-        const computedHash = crypto.scryptSync(password, salt, 64).toString('hex');
-        return hash === computedHash;
-      })()
-    : user.password === password;
+  const pwdMatches = user
+    ? (user.password.includes(':')
+        ? (() => {
+            const [salt, hash] = user.password.split(':');
+            const computedHash = crypto.scryptSync(password, salt, 64).toString('hex');
+            return hash === computedHash;
+          })()
+        : user.password === password)
+    : false;
 
-  if (!pwdMatches) {
-    recordAttempt(username, req.ip);
+  if (!user || !pwdMatches) {
     return renderLogin(res, { error: 'Invalid username or password.' });
   }
 
