@@ -15,18 +15,22 @@ function getSessionUser(req) {
   return { id: session.user_id, role: session.role };
 }
 
-// Home page / Dashboard
+// Landing page — shown to unauthenticated users
 router.get('/', (req, res) => {
   const session = getSessionUser(req);
-  const userId = session?.id;
-  const userRole = session?.role;
+
+  // Unauthenticated → show landing page with system introduction
+  if (!session) {
+    return res.render('landing', { title: 'Welcome', user: null });
+  }
+
+  const userId = session.id;
+  const userRole = session.role;
 
   let viewData = { title: 'Dashboard', role: userRole };
 
   // Fetch the full user record for the nav/header
-  if (userId) {
-    viewData.user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-  }
+  viewData.user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
 
   if (userRole === 'admin') {
     // ── Admin stats ──
@@ -87,84 +91,48 @@ router.get('/', (req, res) => {
     `).all(userId);
 
   } else {
-    // ── Manager view (default for any non-admin, non-employee role, or unauthenticated) ──
-    // If no role or manager, show manager-style view
-    // Pending approval count (orders created by users who report to this manager, OR all pending if no userId)
-    viewData.pendingApprovals = userId
-      ? db.prepare(`
-          SELECT COUNT(*) AS c FROM orders o
-          JOIN users u ON o.created_by = u.id
-          WHERE o.status = 'pending' AND u.report_to = ?
-        `).get(userId).c || 0
-      : db.prepare("SELECT COUNT(*) AS c FROM orders WHERE status = 'pending'").get().c || 0;
+    // ── Manager view ──
+    viewData.pendingApprovals = db.prepare(`
+      SELECT COUNT(*) AS c FROM orders o
+      JOIN users u ON o.created_by = u.id
+      WHERE o.status = 'pending' AND u.report_to = ?
+    `).get(userId).c || 0;
 
-    viewData.completedThisMonth = userId
-      ? db.prepare(`
-          SELECT COUNT(*) AS c FROM orders o
-          JOIN users u ON o.created_by = u.id
-          WHERE o.status = 'approved'
-            AND strftime('%Y-%m', o.updated_at) = strftime('%Y-%m', 'now')
-            AND u.report_to = ?
-        `).get(userId).c || 0
-      : db.prepare(`
-          SELECT COUNT(*) AS c FROM orders
-          WHERE status = 'approved'
-            AND strftime('%Y-%m', updated_at) = strftime('%Y-%m', 'now')
-        `).get().c || 0;
+    viewData.completedThisMonth = db.prepare(`
+      SELECT COUNT(*) AS c FROM orders o
+      JOIN users u ON o.created_by = u.id
+      WHERE o.status = 'approved'
+        AND strftime('%Y-%m', o.updated_at) = strftime('%Y-%m', 'now')
+        AND u.report_to = ?
+    `).get(userId).c || 0;
 
     // Pending approval orders list (for manager's team)
-    viewData.pendingOrders = userId
-      ? db.prepare(`
-          SELECT o.order_ref, o.total, o.status, o.created_at,
-                 c.company_name AS customer_name,
-                 u.full_name AS created_by_name
-          FROM orders o
-          JOIN customers c ON o.customer_id = c.id
-          JOIN users u ON o.created_by = u.id
-          WHERE o.status = 'pending' AND u.report_to = ?
-          ORDER BY o.created_at ASC
-          LIMIT 10
-        `).all(userId)
-      : db.prepare(`
-          SELECT o.order_ref, o.total, o.status, o.created_at,
-                 c.company_name AS customer_name,
-                 u.full_name AS created_by_name
-          FROM orders o
-          JOIN customers c ON o.customer_id = c.id
-          JOIN users u ON o.created_by = u.id
-          WHERE o.status = 'pending'
-          ORDER BY o.created_at ASC
-          LIMIT 10
-        `).all();
+    viewData.pendingOrders = db.prepare(`
+      SELECT o.order_ref, o.total, o.status, o.created_at,
+             c.company_name AS customer_name,
+             u.full_name AS created_by_name
+      FROM orders o
+      JOIN customers c ON o.customer_id = c.id
+      JOIN users u ON o.created_by = u.id
+      WHERE o.status = 'pending' AND u.report_to = ?
+      ORDER BY o.created_at ASC
+      LIMIT 10
+    `).all(userId);
 
     // Team ticket overview
-    viewData.teamTickets = userId
-      ? db.prepare(`
-          SELECT t.ticket_ref, t.subject, t.priority, t.status,
-                 u1.full_name AS assignee_name,
-                 u2.full_name AS reporter_name
-          FROM tickets t
-          LEFT JOIN users u1 ON t.assigned_to = u1.id
-          LEFT JOIN users u2 ON t.created_by = u2.id
-          WHERE t.assigned_to IN (
-            SELECT id FROM users WHERE report_to = ?
-          )
-          ORDER BY t.created_at DESC
-          LIMIT 5
-        `).all(userId)
-      : db.prepare(`
-          SELECT t.ticket_ref, t.subject, t.priority, t.status,
-                 u1.full_name AS assignee_name,
-                 u2.full_name AS reporter_name
-          FROM tickets t
-          LEFT JOIN users u1 ON t.assigned_to = u1.id
-          LEFT JOIN users u2 ON t.created_by = u2.id
-          ORDER BY t.created_at DESC
-          LIMIT 5
-        `).all();
-
-    // For cases where we can't determine role, default to manager with global data
-    viewData.role = viewData.role || 'manager';
+    viewData.teamTickets = db.prepare(`
+      SELECT t.ticket_ref, t.subject, t.priority, t.status,
+             u1.full_name AS assignee_name,
+             u2.full_name AS reporter_name
+      FROM tickets t
+      LEFT JOIN users u1 ON t.assigned_to = u1.id
+      LEFT JOIN users u2 ON t.created_by = u2.id
+      WHERE t.assigned_to IN (
+        SELECT id FROM users WHERE report_to = ?
+      )
+      ORDER BY t.created_at DESC
+      LIMIT 5
+    `).all(userId);
   }
 
   res.render('index', viewData);
