@@ -1,8 +1,8 @@
 node_modules/
-.env
-*.db
-*.sqlite
+data/*.db*
 logs/
-tmp/
+.env
 .DS_Store
-uploads/
+._*
+*.bak
+*.tmp
