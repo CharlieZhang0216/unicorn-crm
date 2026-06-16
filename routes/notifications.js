@@ -1,8 +1,8 @@
 /**
- * 通知路由
- * GET /notifications — 获取通知历史（最近 50 条）
- * POST /notifications — 手动创建通知（管理员）
- * PUT /notifications/:id/read — 标记已读
+ * Notification Routes
+ * GET /notifications — Get notification history (last 50)
+ * POST /notifications — Manually create notification (admin)
+ * PUT /notifications/:id/read — Mark as read
  */
 const express = require('express');
 const router = express.Router();
@@ -19,7 +19,7 @@ function requireAuth(req, res, next) {
   next();
 }
 
-// GET /notifications — 获取当前用户的通知历史
+// GET /notifications — Get current user's notification history
 router.get('/', requireAuth, (req, res) => {
   const { page, limit } = req.query;
   const currentPage = Math.max(1, parseInt(page) || 1);
@@ -60,7 +60,7 @@ router.get('/', requireAuth, (req, res) => {
   });
 });
 
-// POST /notifications — 手动创建通知（管理员）
+// POST /notifications — Manually create notification (admin)
 router.post('/', requireAuth, (req, res) => {
   if (req.currentUser.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required.' });
@@ -104,7 +104,7 @@ router.post('/', requireAuth, (req, res) => {
   });
 });
 
-// PUT /notifications/:id/read — 标记已读
+// PUT /notifications/:id/read — Mark as read
 router.put('/:id/read', requireAuth, (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
@@ -123,7 +123,7 @@ router.put('/:id/read', requireAuth, (req, res) => {
   res.json({ success: true, message: 'Notification marked as read.' });
 });
 
-// PUT /notifications/read-all — 全部标记已读
+// PUT /notifications/read-all — Mark all as read
 router.put('/read-all', requireAuth, (req, res) => {
   const result = db.prepare(`
     UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0

@@ -1,8 +1,8 @@
 /**
- * 定时任务管理路由
- * GET /jobs — 列出定时任务和状态
- * POST /jobs/:name/run — 手动触发
- * GET /jobs/:name/history — 运行历史
+ * Scheduled Job Management Routes
+ * GET /jobs — List jobs and status
+ * POST /jobs/:name/run — Trigger manually
+ * GET /jobs/:name/history — Run history
  */
 const express = require('express');
 const router = express.Router();
@@ -26,13 +26,13 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// GET /jobs — 列出所有定时任务和状态
+// GET /jobs — List all scheduled jobs and status
 router.get('/', requireAuth, requireAdmin, (req, res) => {
   const jobs = getJobsStatus();
   res.json({ success: true, data: jobs });
 });
 
-// POST /jobs/:name/run — 手动触发任务
+// POST /jobs/:name/run — Trigger job manually
 router.post('/:name/run', requireAuth, requireAdmin, (req, res) => {
   const { name } = req.params;
   const validJobs = ['daily_report', 'weekly_token_cleanup'];
@@ -45,7 +45,7 @@ router.post('/:name/run', requireAuth, requireAdmin, (req, res) => {
   res.json({ success: true, job: name, result });
 });
 
-// GET /jobs/:name/history — 查看任务运行历史
+// GET /jobs/:name/history — View job run history
 router.get('/:name/history', requireAuth, requireAdmin, (req, res) => {
   const { name } = req.params;
   const history = getJobHistory(name);

@@ -1,12 +1,12 @@
 /**
- * GraphQL API 路由
- * 使用 express-graphql + graphql
+ * GraphQL API Routes
+ * Uses express-graphql + graphql
  * 
- * 安全措施：
- * - 认证（session 或 Bearer token）
- * - 深度限制 max depth 5
- * - 查询复杂度限制
- * - Production 模式禁用 introspection（保留 admin introspection 端点）
+ * Security measures:
+ * - Authentication (session or Bearer token)
+ * - Depth limit: max depth 5
+ * - Query complexity limiting
+ * - Introspection disabled in production (admin introspection endpoint retained)
  * - Rate limiting
  */
 const express = require('express');
@@ -52,7 +52,7 @@ function rateLimiter(ip) {
   return { limited: false };
 }
 
-// ─── 查询复杂度 & 深度限制 ───
+// ─── Query Complexity & Depth Limit ───
 const MAX_DEPTH = 5;
 const MAX_COMPLEXITY = 100;
 
@@ -71,7 +71,7 @@ function computeComplexity(node, depth = 0) {
   return cost;
 }
 
-// ─── 类型定义 ───
+// ─── Type Definitions ───
 const UserType = new GraphQLObjectType({
   name: 'User',
   fields: () => ({
@@ -87,7 +87,7 @@ const UserType = new GraphQLObjectType({
     quota: { type: GraphQLInt },
     created_at: { type: GraphQLString },
     is_active: { type: GraphQLInt },
-    // 不暴露 password、api_token、ssn 等敏感字段
+    // Don't expose password, api_token, SSN, or other sensitive fields
   })
 });
 
@@ -299,13 +299,13 @@ const RootQuery = new GraphQLObjectType({
 // ─── Schema ───
 const schema = new GraphQLSchema({
   query: RootQuery
-  // Mutation 暂不暴露（保持攻击面可控）
+  // Mutations not exposed yet (keep attack surface controlled)
 });
 
-// ─── 是否是 production ───
+// ─── Check if production ───
 const isProd = process.env.NODE_ENV === 'production';
 
-// ─── 主 GraphQL 端点（带 introspection 控制） ───
+// ─── Main GraphQL Endpoint (with introspection control) ───
 router.use('/', (req, res, next) => {
   // Rate limiting
   const ip = req.ip || req.connection.remoteAddress;
@@ -315,7 +315,7 @@ router.use('/', (req, res, next) => {
     return res.status(429).json({ error: 'Too many GraphQL requests. Please try again later.' });
   }
 
-  // 复杂度检查
+  // Complexity check
   if (req.body && req.body.query) {
     try {
       const { parse } = require('graphql');
@@ -332,7 +332,7 @@ router.use('/', (req, res, next) => {
         return res.status(400).json({ error: `Query complexity ${complexity} exceeds maximum of ${MAX_COMPLEXITY}` });
       }
     } catch (e) {
-      // 解析错误交给 graphqlHTTP 处理
+      // Let graphqlHTTP handle parse errors
     }
   }
 
@@ -344,7 +344,7 @@ router.use('/', (req, res, next) => {
     graphiql: false,
     context: { user, req },
     customFormatErrorFn: (error) => {
-      // 隐藏内部细节
+      // Hide internal details
       const message = error.message.includes('Authentication required') ||
                       error.message.includes('access required') ||
                       error.message.includes('Query exceeds') ||
@@ -353,14 +353,14 @@ router.use('/', (req, res, next) => {
         : 'An error occurred while processing your GraphQL request.';
       return { message };
     },
-    // Production 模式下禁用 introspection
+    // Disable introspection in production mode
     validationRules: isProd
       ? [NoIntrospectionValidation]
       : [],
   };
 }));
 
-// ─── Admin introspection 端点（始终可用，用于调试） ───
+// ─── Admin Introspection Endpoint (always available for debugging) ───
 router.use('/introspection', graphqlHTTP((req) => {
   const user = graphqlAuth(req);
   if (!user || user.role !== 'admin') {
@@ -378,7 +378,7 @@ router.use('/introspection', graphqlHTTP((req) => {
   };
 }));
 
-// ─── Production introspection 禁用规则 ───
+// ─── Production Introspection Disable Rule ───
 function NoIntrospectionValidation(context) {
   return {
     Field(node) {

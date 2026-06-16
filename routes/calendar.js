@@ -1,11 +1,11 @@
 /**
- * 日历/日程系统路由
+ * Calendar & Event System Routes
  * 
- * GET /calendar — 查看日程（月/周/日视图）
- * POST /calendar — 创建日程事件
- * PUT /calendar/:id — 更新事件
- * DELETE /calendar/:id — 删除事件
- * GET /calendar/export.ics — 导出 iCalendar 文件
+ * GET /calendar — View events (month/week/day views)
+ * POST /calendar — Create event
+ * PUT /calendar/:id — Update event
+ * DELETE /calendar/:id — Delete event
+ * GET /calendar/export.ics — Export iCalendar file
  */
 const express = require('express');
 const router = express.Router();
@@ -22,21 +22,21 @@ function requireAuth(req, res, next) {
   next();
 }
 
-// GET /calendar — 查看日程（支持月/周/日视图）
+// GET /calendar — View events (month/week/day views)
 router.get('/', requireAuth, (req, res) => {
   const { view, start, end } = req.query;
   const calendarView = ['month', 'week', 'day'].includes(view) ? view : 'month';
 
-  // 计算日期范围
+  // Calculate date range
   let startDate, endDate;
   const now = new Date();
 
   if (start && end) {
-    // 自定义范围
+    // Custom range
     startDate = start;
     endDate = end;
   } else {
-    // 基于视图计算
+    // Compute based on view
     switch (calendarView) {
       case 'month': {
         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -64,7 +64,7 @@ router.get('/', requireAuth, (req, res) => {
     }
   }
 
-  // 获取该范围内的所有事件（用户自己的 + 公开事件/部门事件）
+  // Fetch all events in range (user's own + public/dept events)
   let events;
   if (req.currentUser.role === 'admin') {
     events = db.prepare(`
@@ -111,7 +111,7 @@ router.get('/', requireAuth, (req, res) => {
   res.json({ success: true, data: events, view: calendarView, startDate, endDate });
 });
 
-// POST /calendar — 创建日程事件
+// POST /calendar — Create event
 router.post('/', requireAuth, (req, res) => {
   const { title, description, location, start_time, end_time, all_day, event_type, entity_type, entity_id } = req.body;
 
@@ -138,7 +138,7 @@ router.post('/', requireAuth, (req, res) => {
     entity_id || null
   );
 
-  // 如果是指向 ticket/customer 的 reminder，推送给相关人员
+  // If reminder is linked to a ticket/customer, push to relevant users
   if (eType === 'reminder' && entity_type) {
     sendToUser(req.currentUser.id, {
       type: 'system_alert',
@@ -156,7 +156,7 @@ router.post('/', requireAuth, (req, res) => {
   });
 });
 
-// PUT /calendar/:id — 更新事件
+// PUT /calendar/:id — Update event
 router.put('/:id', requireAuth, (req, res) => {
   const eventId = parseInt(req.params.id);
   if (isNaN(eventId)) {
@@ -168,7 +168,7 @@ router.put('/:id', requireAuth, (req, res) => {
     return res.status(404).json({ error: 'Event not found.' });
   }
 
-  // 只有创建者可以编辑
+  // Only creator can edit
   if (event.user_id !== req.currentUser.id && req.currentUser.role !== 'admin') {
     return res.status(403).json({ error: 'You can only edit your own events.' });
   }
@@ -202,7 +202,7 @@ router.put('/:id', requireAuth, (req, res) => {
   res.json({ success: true, message: 'Event updated.', event: updated });
 });
 
-// DELETE /calendar/:id — 删除事件
+// DELETE /calendar/:id — Delete event
 router.delete('/:id', requireAuth, (req, res) => {
   const eventId = parseInt(req.params.id);
   if (isNaN(eventId)) {
@@ -214,7 +214,7 @@ router.delete('/:id', requireAuth, (req, res) => {
     return res.status(404).json({ error: 'Event not found.' });
   }
 
-  // 只有创建者或 admin 可以删除
+  // Only creator or admin can delete
   if (event.user_id !== req.currentUser.id && req.currentUser.role !== 'admin') {
     return res.status(403).json({ error: 'You can only delete your own events.' });
   }
@@ -224,29 +224,29 @@ router.delete('/:id', requireAuth, (req, res) => {
   res.json({ success: true, message: 'Event deleted.' });
 });
 
-// GET /calendar/export.ics — 导出 iCalendar 文件
+// GET /calendar/export.ics — Export iCalendar file
 router.get('/export.ics', requireAuth, (req, res) => {
-  // 获取当前用户的所有事件
+  // Fetch all events for current user
   const events = db.prepare(`
     SELECT * FROM events
     WHERE user_id = ?
     ORDER BY start_time ASC
   `).all(req.currentUser.id);
 
-  // iCalendar 内容转义
+  // iCalendar content escaping
   function icsEscape(text) {
     if (!text) return '';
     return text
-      .replace(/\\/g, '\\\\')   // 反斜杠
-      .replace(/\n/g, '\\n')     // 换行
-      .replace(/;/g, '\\;')      // 分号
-      .replace(/,/g, '\\,')      // 逗号
-      .replace(/[\r]/g, '');     // 移除回车
+      .replace(/\\/g, '\\\\')   // backslash
+      .replace(/\n/g, '\\n')     // newline
+      .replace(/;/g, '\\;')      // semicolon
+      .replace(/,/g, '\\,')      // comma
+      .replace(/[\r]/g, '');     // remove CR
   }
 
   function formatICSDate(dateStr) {
     if (!dateStr) return '';
-    // 移除时区信息，转为 UTC 格式
+    // Strip timezone info, convert to UTC format
     try {
       const d = new Date(dateStr);
       return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';

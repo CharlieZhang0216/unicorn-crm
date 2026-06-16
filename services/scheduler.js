@@ -1,23 +1,23 @@
 /**
- * 定时任务调度器
- * 使用 node-cron
+ * Cron Job Scheduler
+ * Uses node-cron
  * 
- * 任务：
- * - daily_report: 每日报表生成（DAU 统计、新增客户数）
- * - weekly_token_cleanup: 每周清理过期 tokens
- * - 可通过 admin API 手动触发
+ * Jobs:
+ * - daily_report: Generate daily report (DAU stats, new customer count)
+ * - weekly_token_cleanup: Weekly cleanup of expired tokens
+ * - Can be triggered manually via admin API
  */
 const cron = require('node-cron');
 const db = require('../config/database');
 const fs = require('fs');
 const path = require('path');
 
-// 任务定义
+// Job definitions
 const jobs = {
   daily_report: {
     name: 'daily_report',
     description: 'Generate daily report (DAU stats, new customer count)',
-    schedule: '0 1 * * *', // 每天凌晨 1 点
+    schedule: '0 1 * * *', // Every day at 1:00 AM
     running: false,
     lastRun: null,
     lastResult: null,
@@ -27,7 +27,7 @@ const jobs = {
   weekly_token_cleanup: {
     name: 'weekly_token_cleanup',
     description: 'Clean up expired session tokens and email tokens',
-    schedule: '0 3 * * 0', // 每周日凌晨 3 点
+    schedule: '0 3 * * 0', // Every Sunday at 3:00 AM
     running: false,
     lastRun: null,
     lastResult: null,
@@ -36,7 +36,7 @@ const jobs = {
   },
 };
 
-// 保存历史记录
+// Save history record
 function saveHistory(jobName, status, result) {
   const job = jobs[jobName];
   if (!job) return;
@@ -50,7 +50,7 @@ function saveHistory(jobName, status, result) {
   }
 }
 
-// ─── 每日报表 ───
+// ─── Daily Report ───
 function runDailyReport() {
   if (jobs.daily_report.running) {
     return { status: 'skipped', reason: 'Already running' };
@@ -62,32 +62,32 @@ function runDailyReport() {
     const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
-    // DAU: 今天有登录行为（创建新 session 或 last_login 在今天）
+    // DAU: users who logged in today (created session or last_login today)
     const dauSessions = db.prepare(`
       SELECT COUNT(DISTINCT user_id) as count
       FROM sessions
       WHERE date(created_at) = ?
     `).get(today);
 
-    // 今天活跃用户（last_login 在今天）
+    // Active users today (last_login is today)
     const activeUsers = db.prepare(`
       SELECT COUNT(*) as count FROM users
       WHERE date(last_login) = ? AND is_active = 1
     `).get(today);
 
-    // 新增客户
+    // New customers
     const newCustomers = db.prepare(`
       SELECT COUNT(*) as count FROM customers
       WHERE date(created_at) = ?
     `).get(today);
 
-    // 新增订单
+    // New orders
     const newOrders = db.prepare(`
       SELECT COUNT(*) as count FROM orders
       WHERE date(created_at) = ?
     `).get(today);
 
-    // 新工单
+    // New tickets
     const newTickets = db.prepare(`
       SELECT COUNT(*) as count FROM tickets
       WHERE date(created_at) = ?
@@ -102,7 +102,7 @@ function runDailyReport() {
       generated_at: new Date().toISOString(),
     };
 
-    // 保存到文件
+    // Save to file
     const reportDir = path.join(__dirname, '..', 'logs');
     if (!fs.existsSync(reportDir)) {
       fs.mkdirSync(reportDir, { recursive: true });
@@ -127,7 +127,7 @@ function runDailyReport() {
   }
 }
 
-// ─── 周清理过期 tokens ───
+// ─── Weekly Token Cleanup ───
 function runTokenCleanup() {
   if (jobs.weekly_token_cleanup.running) {
     return { status: 'skipped', reason: 'Already running' };
@@ -138,30 +138,30 @@ function runTokenCleanup() {
   try {
     const now = new Date().toISOString();
 
-    // 清理过期会话
+    // Clean up expired sessions
     const sessionResult = db.prepare(`
       DELETE FROM sessions WHERE expires_at < ?
     `).run(now);
 
-    // 清理过期 email tokens (expires_at)
-    // 尝试清理（如果表存在）
+    // Clean up expired email tokens (expires_at)
+    // Attempt cleanup (table may not exist)
     let emailTokenResult = { changes: 0 };
     try {
       emailTokenResult = db.prepare(`
         DELETE FROM email_tokens WHERE expires_at < ? AND used = 0
       `).run(now);
     } catch (e) {
-      // 表可能不存在
+      // Table may not exist
     }
 
-    // 清理过期 API tokens
+    // Clean up expired API tokens
     let apiTokenResult = { changes: 0 };
     try {
       apiTokenResult = db.prepare(`
         DELETE FROM api_tokens WHERE expires_at < ?
       `).run(now);
     } catch (e) {
-      // 表可能不存在
+      // Table may not exist
     }
 
     const result = {
@@ -188,17 +188,17 @@ function runTokenCleanup() {
 }
 
 /**
- * 初始化所有定时任务
+ * Initialize all cron jobs
  */
 function initScheduler() {
-  // 每日报表
+  // Daily report
   cron.schedule(jobs.daily_report.schedule, () => {
     console.log('[Scheduler] Running daily_report...');
     runDailyReport();
   });
   console.log(`[Scheduler] Job "daily_report" scheduled: ${jobs.daily_report.schedule}`);
 
-  // 每周 token 清理
+  // Weekly token cleanup
   cron.schedule(jobs.weekly_token_cleanup.schedule, () => {
     console.log('[Scheduler] Running weekly_token_cleanup...');
     runTokenCleanup();
@@ -209,7 +209,7 @@ function initScheduler() {
 }
 
 /**
- * 手动触发任务
+ * Trigger job manually
  */
 function triggerJob(name) {
   switch (name) {
@@ -223,7 +223,7 @@ function triggerJob(name) {
 }
 
 /**
- * 获取任务状态
+ * Get job status
  */
 function getJobsStatus() {
   const result = {};
@@ -242,7 +242,7 @@ function getJobsStatus() {
 }
 
 /**
- * 获取任务历史
+ * Get job history
  */
 function getJobHistory(name) {
   const job = jobs[name];

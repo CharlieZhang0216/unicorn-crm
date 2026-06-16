@@ -1,7 +1,7 @@
 /**
- * 轻量攻击审计中间件
- * 记录每个请求的关键安全信息到日志文件
- * 开销：纯文本追加写入，无 JSON 解析、无索引、无内存缓存
+ * Lightweight Attack Audit Middleware
+ * Logs key security info for each request to a flat file
+ * Overhead: plain-text append only — no JSON parsing, no indexing, no in-memory cache
  */
 const fs = require('fs');
 const path = require('path');
@@ -9,13 +9,13 @@ const path = require('path');
 const AUDIT_LOG = path.join(__dirname, '..', 'logs', 'audit.log');
 const HONEYPOT_LOG = path.join(__dirname, '..', 'logs', 'honeypot.log');
 
-// 确保日志目录存在
+// Ensure log directory exists
 const logDir = path.dirname(AUDIT_LOG);
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
-// 攻击特征检测规则
+// Attack signature detection rules
 const ATTACK_SIGNATURES = [
   { name: 'SQLi', pattern: /(\bunion\b.*\bselect\b|\bselect\b.*\bfrom\b|--[+\s]|;.*\b(drop|alter|create|insert|delete)\b)/i },
   { name: 'XSS', pattern: /(<script|javascript:|on\w+\s*=|alert\s*\(|document\.cookie)/i },
@@ -55,12 +55,12 @@ function sanitize(obj, maxLen = 500) {
 function auditMiddleware(req, res, next) {
   const start = Date.now();
 
-  // 记录原始 body（在中间件消费之前）
+  // Capture raw body (before middleware consumes it)
   const rawBody = req.body ? JSON.stringify(sanitize(req.body)) : '';
   const rawQuery = JSON.stringify(sanitize(req.query));
   const attackHits = [...detectAttacks(rawBody), ...detectAttacks(rawQuery), ...detectAttacks(req.url)];
 
-  // 响应完成后记录
+  // Log after response completes
   res.on('finish', () => {
     const duration = Date.now() - start;
     const entry = {
@@ -78,12 +78,12 @@ function auditMiddleware(req, res, next) {
       query: rawQuery,
     };
 
-    // 如果有攻击特征，标注
+    // Flag if attack signatures detected
     if (attackHits.length > 0) {
       entry.attacks = [...new Set(attackHits)].join(',');
     }
 
-    // 高价值事件单独标注
+    // Tag high-value events separately
     if (res.statusCode === 500) entry.flags = 'ERROR_500';
     if (res.statusCode === 403) entry.flags = 'FORBIDDEN';
     if (res.statusCode === 401) entry.flags = 'UNAUTHORIZED';
@@ -95,7 +95,7 @@ function auditMiddleware(req, res, next) {
   next();
 }
 
-// ─── 蜜罐路由 ───
+// ─── Honeypot Routes ───
 const HONEYPOT_PATHS = [
   '/admin', '/administrator', '/wp-admin', '/wp-login.php',
   '/phpmyadmin', '/phpMyAdmin', '/pma',
@@ -121,7 +121,7 @@ const HONEYPOT_PATHS = [
 ];
 
 function setupHoneypots(app) {
-  // 单个路由捕获
+  // Capture per-route
   HONEYPOT_PATHS.forEach(hp => {
     app.all(hp, (req, res) => {
       const entry = {
@@ -137,7 +137,7 @@ function setupHoneypots(app) {
     });
   });
 
-  console.log(`🍯 ${HONEYPOT_PATHS.length} 蜜罐路由已部署`);
+  console.log(`🍯 ${HONEYPOT_PATHS.length} honeypot routes deployed`);
 }
 
 module.exports = { auditMiddleware, setupHoneypots };

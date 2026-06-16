@@ -1,11 +1,11 @@
 /**
- * 批量操作 — 扩展 customers.js
+ * Batch Operations — extends customers.js
  * 
- * 两个新路由：
- * POST /customers/batch-delete — 批量删除（admin only）
- * POST /customers/batch-assign — 批量分配客户给经理
+ * Two new routes:
+ * POST /customers/batch-delete — Batch delete (admin only)
+ * POST /customers/batch-assign — Batch assign customers to managers
  */
-// 在原有 customers.js 基础上追加下列路由
+// Append these routes to the existing customers.js router
 
 const db = require('../config/database');
 
@@ -21,9 +21,9 @@ module.exports.batchRoutes = function(router) {
     next();
   }
 
-  // POST /customers/batch-delete — 批量删除（需要 admin）
+  // POST /customers/batch-delete — Batch delete (admin only)
   router.post('/batch-delete', requireAuth, (req, res) => {
-    // 权限检查
+    // Permission check
     if (req.currentUser.role !== 'admin') {
       return res.status(403).json({ error: 'Admin access required for batch deletion.' });
     }
@@ -37,7 +37,7 @@ module.exports.batchRoutes = function(router) {
       return res.status(400).json({ error: 'Maximum 100 records per batch operation.' });
     }
 
-    // 验证所有 ID 为数字且存在
+    // Validate all IDs are numeric and exist
     const validIds = ids.filter(id => !isNaN(parseInt(id)));
     if (validIds.length !== ids.length) {
       return res.status(400).json({ error: 'All IDs must be valid numbers.' });
@@ -54,7 +54,7 @@ module.exports.batchRoutes = function(router) {
       });
     }
 
-    // 审计 + 删除（使用事务）
+    // Audit + delete (with transaction)
     const deleteTransaction = db.transaction(() => {
       for (const cust of customers) {
         db.prepare(`
@@ -82,9 +82,9 @@ module.exports.batchRoutes = function(router) {
     });
   });
 
-  // POST /customers/batch-assign — 批量分配客户
+  // POST /customers/batch-assign — Batch assign customers
   router.post('/batch-assign', requireAuth, (req, res) => {
-    // 权限检查：admin 或 manager
+    // Permission check: admin or manager
     if (req.currentUser.role !== 'admin' && req.currentUser.role !== 'manager') {
       return res.status(403).json({ error: 'Admin or manager access required.' });
     }
@@ -101,7 +101,7 @@ module.exports.batchRoutes = function(router) {
       return res.status(400).json({ error: 'Maximum 100 records per batch operation.' });
     }
 
-    // 验证目标用户存在且是 manager
+    // Verify target user exists and is a manager
     const targetUser = db.prepare('SELECT id, role FROM users WHERE id = ?').get(parseInt(assigned_to));
     if (!targetUser) {
       return res.status(404).json({ error: 'Assigned user not found.' });
@@ -126,7 +126,7 @@ module.exports.batchRoutes = function(router) {
       });
     }
 
-    // 审计 + 更新
+    // Audit + update
     const assignTransaction = db.transaction(() => {
       for (const cust of customers) {
         db.prepare(`

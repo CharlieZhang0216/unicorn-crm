@@ -1,10 +1,10 @@
 /**
- * WebSocket 实时通知服务
- * 使用 ws 库（轻量级）
+ * WebSocket Real-time Notification Service
+ * Uses ws library (lightweight)
  * 
- * 通知类型：new_customer, ticket_update, new_order, system_alert
- * 认证：连接时发送 auth token
- * 频道隔离：用户只能收到自己有权限的通知
+ * Notification types: new_customer, ticket_update, new_order, system_alert
+ * Authentication: send auth token on connect
+ * Channel isolation: users only receive notifications they have permission for
  */
 const WebSocket = require('ws');
 const db = require('../config/database');
@@ -15,13 +15,13 @@ const connections = new Map();
 let wss = null;
 
 /**
- * 初始化 WebSocket 服务器
+ * Initialize WebSocket server
  * @param {http.Server} server - HTTP Server instance
  */
 function initWebSocket(server) {
   wss = new WebSocket.Server({
     server,
-    path: '/ws', // 客户端连接 wss://host/ws
+    path: '/ws', // Clients connect to wss://host/ws
     maxPayload: 64 * 1024, // 64KB max message size
   });
 
@@ -126,9 +126,9 @@ function initWebSocket(server) {
 }
 
 /**
- * 发送通知给指定用户
- * @param {number|string} userId - 目标用户 ID
- * @param {object} notification - 通知对象 { type, title, body, entity_type, entity_id }
+ * Send notification to a specific user
+ * @param {number|string} userId - Target user ID
+ * @param {object} notification - Notification object { type, title, body, entity_type, entity_id }
  */
 function sendToUser(userId, notification) {
   if (!wss) return;
@@ -155,9 +155,9 @@ function sendToUser(userId, notification) {
 }
 
 /**
- * 广播通知给具有特定角色的所有用户
- * @param {string} role - 角色名 (admin, manager, etc.)
- * @param {object} notification - 通知对象
+ * Broadcast notification to all users with a specific role
+ * @param {string} role - Role name (admin, manager, etc.)
+ * @param {object} notification - Notification object
  */
 function sendToRole(role, notification) {
   if (!wss) return 0;
@@ -182,8 +182,8 @@ function sendToRole(role, notification) {
 }
 
 /**
- * 广播通知给所有已认证用户
- * @param {object} notification - 通知对象
+ * Broadcast notification to all authenticated users
+ * @param {object} notification - Notification object
  */
 function broadcast(notification) {
   if (!wss) return 0;
@@ -208,7 +208,7 @@ function broadcast(notification) {
 }
 
 /**
- * 获取活跃连接统计
+ * Get active connection statistics
  */
 function getStats() {
   const stats = {

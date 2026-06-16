@@ -1,9 +1,9 @@
 /**
- * 批量操作 — 扩展 tickets.js
+ * Batch Operations — extends tickets.js
  * 
- * 两个新路由：
- * POST /tickets/batch-status — 批量改状态
- * POST /tickets/batch-assign — 批量分配
+ * Two new routes:
+ * POST /tickets/batch-status — Batch status change
+ * POST /tickets/batch-assign — Batch assign
  */
 const db = require('../config/database');
 
@@ -19,9 +19,9 @@ module.exports.batchRoutes = function(router) {
     next();
   }
 
-  // POST /tickets/batch-status — 批量改状态
+  // POST /tickets/batch-status — Batch status change
   router.post('/batch-status', requireAuth, (req, res) => {
-    // 权限检查：admin 或 manager
+    // Permission check: admin or manager
     if (req.currentUser.role !== 'admin' && req.currentUser.role !== 'manager') {
       return res.status(403).json({ error: 'Admin or manager access required for batch status changes.' });
     }
@@ -50,7 +50,7 @@ module.exports.batchRoutes = function(router) {
 
     const placeholders = validIds.map(() => '?').join(',');
 
-    // 验证所有权：检查 tickets 属于当前用户或当前用户有权限操作
+    // Validate ownership: check tickets belong to current user or user has permission
     const tickets = db.prepare(
       `SELECT id, subject, status FROM tickets WHERE id IN (${placeholders})`
     ).all(...validIds);
@@ -63,7 +63,7 @@ module.exports.batchRoutes = function(router) {
       });
     }
 
-    // 批量更新 + 审计 + 添加评论
+    // Batch update + audit + add comments
     const batchTx = db.transaction(() => {
       let updated = 0;
       for (const ticket of tickets) {
@@ -101,7 +101,7 @@ module.exports.batchRoutes = function(router) {
     });
   });
 
-  // POST /tickets/batch-assign — 批量分配
+  // POST /tickets/batch-assign — Batch assign
   router.post('/batch-assign', requireAuth, (req, res) => {
     if (req.currentUser.role !== 'admin' && req.currentUser.role !== 'manager') {
       return res.status(403).json({ error: 'Admin or manager access required for batch assignment.' });
@@ -119,7 +119,7 @@ module.exports.batchRoutes = function(router) {
       return res.status(400).json({ error: 'Maximum 100 records per batch operation.' });
     }
 
-    // 验证目标用户存在
+    // Verify target user exists
     const targetUser = db.prepare('SELECT id, full_name FROM users WHERE id = ?').get(parseInt(assigned_to));
     if (!targetUser) {
       return res.status(404).json({ error: 'Assigned user not found.' });
