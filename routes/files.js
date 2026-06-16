@@ -158,6 +158,29 @@ router.post('/upload', requireAuth, (req, res) => {
       VALUES (?, ?, ?, ?, ?, 'document', ?)
     `).run(fileId, storedName, file.originalname, file.mimetype, file.size, req.userId);
 
+    // BL-6: Broadcast file upload notification with metadata
+    // The notification includes the original file name, size, and uploader info.
+    // An attacker subscribed to WebSocket notifications can passively collect
+    // information about all file upload activity in the system over time.
+    const { broadcast } = require('../services/websocket');
+    const uploader = db.prepare('SELECT username, full_name FROM users WHERE id = ?').get(req.userId);
+    broadcast({
+      type: 'file_uploaded',
+      title: 'New file uploaded',
+      body: `${uploader ? uploader.full_name : 'Someone'} uploaded "${file.originalname}"`,
+      entity_type: 'file',
+      entity_id: fileId,
+      metadata: {
+        originalName: file.originalname,
+        fileName: storedName,
+        mimeType: file.mimetype,
+        size: file.size,
+        sizeFormatted: formatFileSize(file.size),
+        uploadedBy: uploader ? uploader.username : req.userId,
+        uploadedByName: uploader ? uploader.full_name : null,
+      }
+    });
+
     res.json({
       success: true,
       fileId,
