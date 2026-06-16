@@ -85,15 +85,15 @@ npm run reset
 | Username | Password | Role |
 |----------|----------|------|
 | `admin` | `Adm1n!Crm#2026` | Admin |
-| `zhang.wei` | `Unicorn@2024` | Admin |
-| `li.na` | `Unicorn@2024` | Manager (Sales – West Coast) |
-| `wang.lei` | `Unicorn@2024` | Manager (Engineering) |
-| `chen.xiao` | `Unicorn@2024` | Manager (Operations – Central) |
-| `sarah.chen` | `Unicorn@2024` | Employee (Sales) |
-| `james.wilson` | `Unicorn@2024` | Employee (Finance) |
-| `emma.park` | `Unicorn@2024` | Employee (Support) |
-| `li.wei` | `Unicorn@2024` | Employee (Engineering) |
-| `maria.garcia` | `Unicorn@2024` | Employee (Support) |
+| `zhang.wei` | `rGDdXKq7+e$d^M5Y` | Admin |
+| `li.na` | `sZPdAPc7X*4kSN*q` | Manager (Sales – West Coast) |
+| `wang.lei` | `vFm4Y4-Pyj5vDZnF` | Manager (Engineering) |
+| `chen.xiao` | `JLc!2n%ExsS@T!X%` | Manager (Operations – Central) |
+| `sarah.chen` | `g*F^-Ng@nq7LHNfR` | Employee (Sales) |
+| `james.wilson` | `2gN48NqzFCt8j-4s` | Employee (Finance) |
+| `emma.park` | `REuwwSnw+2fn&hTR` | Employee (Support) |
+| `li.wei` | `_BG-T_CxQg#5HbsK` | Employee (Engineering) |
+| `maria.garcia` | `7+gq$*&GbSc2Fp9&` | Employee (Support) |
 
 The database includes 10 users, 15 customers, 20 orders, 15 tickets, and 20 audit log entries — all fictional.
 
