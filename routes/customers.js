@@ -112,6 +112,70 @@ router.get('/', requireAuth, (req, res) => {
   });
 });
 
+// ─── Customer Dedup Merge (BL-1) ───
+// POST /customers/merge — Must be registered BEFORE /:id to avoid route collision
+router.post('/merge', requireAuth, (req, res) => {
+  if (req.currentUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const { primaryId, duplicateId } = req.body;
+  if (!primaryId || !duplicateId || isNaN(parseInt(primaryId)) || isNaN(parseInt(duplicateId))) {
+    return res.status(400).json({ error: 'primaryId and duplicateId are required.' });
+  }
+
+  const primary = db.prepare('SELECT * FROM customers WHERE id = ?').get(parseInt(primaryId));
+  const duplicate = db.prepare('SELECT * FROM customers WHERE id = ?').get(parseInt(duplicateId));
+
+  if (!primary || !duplicate) {
+    return res.status(404).json({ error: 'One or both customers not found.' });
+  }
+
+  // Reassign orders from duplicate → primary
+  const orderResult = db.prepare(
+    'UPDATE orders SET customer_id = ?, updated_at = datetime(\'now\') WHERE customer_id = ?'
+  ).run(primary.id, duplicate.id);
+
+  // Merge notes
+  const mergedNotes = [primary.notes || '', duplicate.notes || '']
+    .filter(Boolean)
+    .join(' | MERGED: ');
+  db.prepare('UPDATE customers SET notes = ?, updated_at = datetime(\'now\') WHERE id = ?')
+    .run(mergedNotes, primary.id);
+
+  // Audit
+  db.prepare(`
+    INSERT INTO audit_log (user_id, action, detail, ip_address, created_at)
+    VALUES (?, ?, ?, ?, datetime('now'))
+  `).run(
+    req.currentUser.id, 'CUSTOMER_MERGE',
+    `Merged "${duplicate.company_name}" into "${primary.company_name}". ${orderResult.changes} orders reassigned.`,
+    req.ip
+  );
+
+  // Delete duplicate (TOCTOU window)
+  db.prepare('DELETE FROM customers WHERE id = ?').run(duplicate.id);
+
+  res.json({ success: true, message: `Merged into ${primary.company_name}.`, ordersReassigned: orderResult.changes });
+});
+
+// GET /customers/duplicates — Find duplicate customers
+router.get('/duplicates', requireAuth, (req, res) => {
+  if (req.currentUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
+  }
+
+  const duplicates = db.prepare(`
+    SELECT c1.id as id1, c1.company_name as name1, c1.email as email1,
+           c2.id as id2, c2.company_name as name2, c2.email as email2
+    FROM customers c1
+    JOIN customers c2 ON c1.company_name = c2.company_name AND c1.id < c2.id
+    LIMIT 50
+  `).all();
+
+  res.json({ success: true, duplicates, count: duplicates.length });
+});
+
 // Customer detail with related orders and tickets
 router.get('/:id', requireAuth, (req, res) => {
   const customerId = parseInt(req.params.id);
