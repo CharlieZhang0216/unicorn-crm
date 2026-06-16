@@ -93,7 +93,7 @@ router.get('/', requireAuth, (req, res) => {
       LEFT JOIN users us ON u.uploaded_by = us.id
       WHERE u.uploaded_by = ?
       ORDER BY u.created_at DESC
-    `).all();
+    `).all(userId);
   }
 
   res.render('files', {
