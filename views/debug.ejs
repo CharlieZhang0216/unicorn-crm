@@ -1,0 +1,33 @@
+<%- include('partials/header', { title: 'System Status' }) %>
+
+<h2>System Status</h2>
+<p class="text-muted">System health and version information.</p>
+
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="card shadow-sm text-center">
+      <div class="card-body">
+        <h5>Status</h5>
+        <span class="badge bg-success fs-5">Online</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card shadow-sm text-center">
+      <div class="card-body">
+        <h5>Uptime</h5>
+        <span class="fs-5"><%= Math.floor(uptime / 3600) %>h <%= Math.floor((uptime % 3600) / 60) %>m</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card shadow-sm text-center">
+      <div class="card-body">
+        <h5>Runtime</h5>
+        <span class="fs-5"><%= nodeVersion %></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,239 @@
+<%- include('partials/header', { title: 'Order ' + order.order_ref }) %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="mb-0"><%= order.order_ref %></h2>
+    <p class="text-muted mb-0">
+      Customer: <a href="/customers/<%= order.customer_id %>"><%= order.customer_name %></a>
+      <% if (order.customer_contact) { %> &middot; Contact: <%= order.customer_contact %><% } %>
+    </p>
+  </div>
+  <div>
+    <a href="/orders" class="btn btn-outline-secondary">&larr; Back to Orders</a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Order Items -->
+  <div class="col-md-7">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">Order Items</div>
+      <div class="card-body p-0">
+        <% if (items.length === 0) { %>
+        <div class="text-center py-4">
+          <p class="text-muted mb-0">No items in this order.</p>
+        </div>
+        <% } else { %>
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>SKU</th>
+                <th>Description</th>
+                <th class="text-center">Qty</th>
+                <th class="text-end">Unit Price</th>
+                <th class="text-end">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% var orderTotal = 0; %>
+              <% items.forEach(function(item) { %>
+              <% var subtotal = item.quantity * item.unit_price; orderTotal += subtotal; %>
+              <tr>
+                <td><code><%= item.sku %></code></td>
+                <td><%= item.description %></td>
+                <td class="text-center"><%= item.quantity %></td>
+                <td class="text-end">$<%= item.unit_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                <td class="text-end">$<%= subtotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+              </tr>
+              <% }); %>
+            </tbody>
+            <tfoot class="table-light">
+              <tr class="fw-bold">
+                <td colspan="4" class="text-end">Total</td>
+                <td class="text-end">$<%= orderTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (order.notes) { %>
+    <div class="card shadow-sm mt-3">
+      <div class="card-header fw-bold">Notes</div>
+      <div class="card-body">
+        <p class="mb-0" style="white-space: pre-wrap;"><%= order.notes %></p>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Related Tickets -->
+    <div class="card shadow-sm mt-3">
+      <div class="card-header d-flex justify-content-between align-items-center fw-bold">
+        <span>Related Tickets (<%= relatedTickets.length %>)</span>
+      </div>
+      <div class="card-body p-0">
+        <% if (relatedTickets.length === 0) { %>
+        <div class="text-center py-4">
+          <p class="text-muted mb-0">No tickets related to this order.</p>
+        </div>
+        <% } else { %>
+        <div class="list-group list-group-flush">
+          <% relatedTickets.forEach(function(t) { %>
+          <a href="/tickets/<%= t.id %>" class="list-group-item list-group-item-action">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <strong><small><code><%= t.ticket_ref %></code></small>: <%= t.subject %></strong>
+              </div>
+              <div>
+                <span class="badge <%= t.priority === 'Critical' || t.priority === 'High' ? 'bg-danger' : t.priority === 'Medium' ? 'bg-warning text-dark' : 'bg-info text-dark' %> me-1"><%= t.priority %></span>
+                <span class="badge <%= t.status === 'open' ? 'bg-danger' : t.status === 'in_progress' ? 'bg-warning text-dark' : t.status === 'resolved' ? 'bg-success' : 'bg-secondary' %>"><%= t.status %></span>
+              </div>
+            </div>
+            <small class="text-muted"><%= t.created_at %></small>
+          </a>
+          <% }); %>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar: Status & Actions -->
+  <div class="col-md-5">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">Order Status</div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="fw-bold">Status:</label>
+          <span class="badge <%= order.status === 'approved' ? 'bg-success fs-6' : order.status === 'pending' ? 'bg-warning text-dark fs-6' : order.status === 'rejected' ? 'bg-danger fs-6' : 'bg-secondary fs-6' %> ms-2"><%= order.status %></span>
+        </div>
+
+        <% if (order.status !== 'rejected') { %>
+        <div class="mb-3">
+          <label class="fw-bold">Approval Progress:</label>
+          <div class="progress mt-1" style="height: 24px;">
+            <% var pct = (order.approval_step / 2) * 100; %>
+            <div class="progress-bar <%= order.approval_step >= 2 ? 'bg-success' : order.approval_step >= 1 ? 'bg-warning' : '' %>"
+                 style="width: <%= pct %>%;" role="progressbar">
+              Step <%= order.approval_step %>/2
+            </div>
+          </div>
+          <small class="text-muted">Step 1: Manager review &bull; Step 2: Final approval</small>
+        </div>
+        <% } %>
+
+        <% if (approver) { %>
+        <div class="mb-3">
+          <label class="fw-bold">Approved/Rejected By:</label>
+          <span class="ms-2"><%= approver.full_name %></span>
+        </div>
+        <% } %>
+
+        <div class="mb-1">
+          <label class="fw-bold">Created By:</label>
+          <span class="ms-2"><%= order.creator_name || 'N/A' %></span>
+        </div>
+        <div>
+          <label class="fw-bold">Created:</label>
+          <span class="ms-2"><small><%= order.created_at %></small></span>
+        </div>
+        <% if (order.updated_at && order.updated_at !== order.created_at) { %>
+        <div class="mt-1">
+          <label class="fw-bold">Updated:</label>
+          <span class="ms-2"><small><%= order.updated_at %></small></span>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Approval/Reject Actions (server-side controlled visibility) -->
+    <% if (canApprove) { %>
+    <div class="card shadow-sm mt-3 border-warning">
+      <div class="card-header bg-warning bg-opacity-10 fw-bold">Approval Actions</div>
+      <div class="card-body">
+        <p class="text-muted small">This order is pending approval. As a <%= user.role %>, you can approve or reject it.</p>
+        <div class="d-grid gap-2">
+          <button type="button" class="btn btn-success" id="btnApprove" onclick="handleApprove()">
+            ✓ Approve Order
+          </button>
+          <button type="button" class="btn btn-outline-danger" id="btnReject" onclick="handleReject()">
+            ✗ Reject Order
+          </button>
+        </div>
+        <div id="actionResult" class="mt-2" style="display:none;"></div>
+      </div>
+    </div>
+    <% } %>
+
+    <% if (order.status === 'approved') { %>
+    <div class="card shadow-sm mt-3 border-success">
+      <div class="card-header bg-success bg-opacity-10 fw-bold">Approved</div>
+      <div class="card-body">
+        <p class="text-muted mb-0">This order has been fully approved.</p>
+      </div>
+    </div>
+    <% } else if (order.status === 'rejected') { %>
+    <div class="card shadow-sm mt-3 border-danger">
+      <div class="card-header bg-danger bg-opacity-10 fw-bold">Rejected</div>
+      <div class="card-body">
+        <p class="text-muted mb-0">This order has been rejected.</p>
+      </div>
+    </div>
+    <% } else if (order.status === 'draft' && (user.role === 'admin' || user.role === 'manager')) { %>
+    <div class="card shadow-sm mt-3">
+      <div class="card-header fw-bold">Draft</div>
+      <div class="card-body">
+        <p class="text-muted mb-0">This order is in draft status. It must be submitted for approval before it can be approved or rejected.</p>
+      </div>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+function showResult(type, message) {
+  var el = document.getElementById('actionResult');
+  el.style.display = 'block';
+  el.className = 'mt-2 alert alert-' + type;
+  el.textContent = message;
+}
+
+function handleApprove() {
+  if (!confirm('Approve this order?')) return;
+  var btn = document.getElementById('btnApprove');
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+  fetch('/orders/<%= order.id %>/approve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) { location.reload(); }
+    else { showResult('danger', 'Error: ' + d.error); btn.disabled = false; btn.textContent = '\u2713 Approve Order'; }
+  })
+  .catch(function() { showResult('danger', 'Request failed.'); btn.disabled = false; btn.textContent = '\u2713 Approve Order'; });
+}
+
+function handleReject() {
+  if (!confirm('Reject this order? This cannot be undone.')) return;
+  var btn = document.getElementById('btnReject');
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+  fetch('/orders/<%= order.id %>/reject', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) { location.reload(); }
+    else { showResult('danger', 'Error: ' + d.error); btn.disabled = false; btn.textContent = '\u2717 Reject Order'; }
+  })
+  .catch(function() { showResult('danger', 'Request failed.'); btn.disabled = false; btn.textContent = '\u2717 Reject Order'; });
+}
+</script>
+
+<%- include('partials/footer') %>

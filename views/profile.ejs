@@ -1,0 +1,52 @@
+<%- include('partials/header', { title: user.full_name }) %>
+
+<div class="row">
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold"><%= user.full_name %></div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tr><td class="fw-bold">Username</td><td><%= user.username %></td></tr>
+          <tr><td class="fw-bold">Email</td><td><%= user.email %></td></tr>
+          <tr><td class="fw-bold">Department</td><td><%= user.department %></td></tr>
+          <tr><td class="fw-bold">Role</td><td><span class="badge <%= user.role === 'admin' ? 'bg-danger' : 'bg-primary' %>"><%= user.role %></span></td></tr>
+          <tr><td class="fw-bold">Tier</td><td><%= user.tier || 'N/A' %></td></tr>
+          <tr><td class="fw-bold">Region</td><td><%= user.region || 'N/A' %></td></tr>
+          <tr><td class="fw-bold">Phone</td><td><%= user.phone %></td></tr>
+          <tr><td class="fw-bold">Onboarded</td><td><%= user.onboarding_date || 'N/A' %></td></tr>
+          <tr><td class="fw-bold">Last Login</td><td><%= user.last_login || 'Never' %></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">Messages</div>
+      <div class="card-body p-0">
+        <% if (!messages || messages.length === 0) { %>
+        <p class="text-muted p-3 mb-0">No messages.</p>
+        <% } else { %>
+        <% messages.forEach(function(m) { %>
+        <div class="card border-0 border-bottom rounded-0">
+          <div class="card-body py-2">
+            <div class="d-flex justify-content-between">
+              <strong><%= m.subject %></strong>
+              <small class="text-muted"><%= m.created_at %></small>
+            </div>
+            <small class="text-muted">From: <%= m.from_name %></small>
+            <% if (m.body) { %>
+            <div class="mt-2 p-2 bg-light rounded">
+              <small><%= m.body %></small>
+            </div>
+            <% } %>
+          </div>
+        </div>
+        <% }); %>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

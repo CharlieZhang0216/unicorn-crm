@@ -1,0 +1,27 @@
+<%- include('../partials/header', { title: 'Notes - Unicorn CRM' }) %>
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Notes</h2>
+    <button class="btn btn-primary" onclick="newNote()">New Note</button>
+  </div>
+  <div class="row" id="notesList"></div>
+</div>
+<script>
+function loadNotes() {
+  fetch("/notes/data").then(r => r.json()).then(data => {
+    var html = data.notes.map(function(n) {
+      return '<div class="col-md-4 mb-3"><div class="card"><div class="card-body"><h5>' + n.title + '</h5><p class="text-muted small">' + new Date(n.updated_at).toLocaleString() + '</p></div></div></div>';
+    }).join("");
+    document.getElementById("notesList").innerHTML = html || '<p class="text-muted">No notes yet. Create your first note!</p>';
+  });
+}
+function newNote() {
+  var title = prompt("Note title:");
+  if (!title) return;
+  var content = prompt("Content:");
+  fetch("/notes", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({title,content}) })
+    .then(r => r.json()).then(() => loadNotes());
+}
+loadNotes();
+</script>
+<%- include('../partials/footer') %>

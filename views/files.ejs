@@ -1,0 +1,36 @@
+<%- include('partials/header', { title: 'Document Center' }) %>
+
+<h2>Document Center</h2>
+<p class="text-muted">Access shared documents, templates, and resources.</p>
+
+<div class="card shadow-sm">
+  <div class="card-header fw-bold">Available Files</div>
+  <div class="card-body">
+    <% if (files.length === 0) { %>
+    <p class="text-muted">No files available.</p>
+    <% } else { %>
+    <div class="list-group">
+      <% files.forEach(function(file) { %>
+      <div class="list-group-item d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-file-earmark"></i> <%= file %></span>
+        <a href="/files/download?filename=<%= encodeURIComponent(file) %>" class="btn btn-sm btn-outline-primary">Download</a>
+      </div>
+      <% }); %>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<div class="mt-3">
+  <div class="card shadow-sm">
+    <div class="card-header fw-bold">Quick Download</div>
+    <div class="card-body">
+      <form action="/files/download" method="GET" class="d-flex gap-2">
+        <input type="text" class="form-control" name="filename" placeholder="Enter filename...">
+        <button type="submit" class="btn btn-primary">Download</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

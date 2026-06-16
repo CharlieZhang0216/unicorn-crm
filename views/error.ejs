@@ -1,0 +1,20 @@
+<%- include('partials/header', { title: 'Error ' + status }) %>
+
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card border-danger shadow mt-4">
+      <div class="card-header bg-danger text-white">
+        <h4 class="mb-0">Error <%= status %></h4>
+      </div>
+      <div class="card-body text-center py-5">
+        <h1 class="display-1 text-danger"><%= status %></h1>
+        <h5 class="text-muted mt-3"><%= message %></h5>
+        <div class="mt-4">
+          <a href="/" class="btn btn-primary">Return to Dashboard</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

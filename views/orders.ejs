@@ -1,0 +1,138 @@
+<%- include('partials/header', { title: 'Orders' }) %>
+
+<h2>Orders</h2>
+<p class="text-muted">Manage sales orders and approval workflows.</p>
+
+<!-- Search -->
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="GET" action="/orders" class="row g-2 align-items-end">
+      <div class="col-md-8">
+        <label class="form-label small fw-bold">Search</label>
+        <input type="text" class="form-control" name="q" placeholder="Search by order ref or customer name..." value="<%= typeof q !== 'undefined' ? q : '' %>">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">&nbsp;</label>
+        <button type="submit" class="btn btn-primary w-100">Search</button>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">&nbsp;</label>
+        <% if (q) { %>
+        <a href="/orders<%= status ? '?status=' + status : '' %>" class="btn btn-outline-secondary w-100">Clear</a>
+        <% } %>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Status Filter Tabs -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body py-2">
+    <ul class="nav nav-pills">
+      <li class="nav-item">
+        <a class="nav-link <%= !status ? 'active' : '' %>" href="/orders<%= q ? '?q=' + q : '' %>">
+          All <% if (typeof counts !== 'undefined') { %><span class="badge bg-secondary ms-1"><%= Object.values(counts).reduce(function(a,b){return a+b;},0) %></span><% } %>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= status === 'pending' ? 'active' : '' %>" href="/orders?status=pending<%= q ? '&q=' + q : '' %>">
+          Pending <% if (counts && counts.pending) { %><span class="badge bg-warning text-dark ms-1"><%= counts.pending %></span><% } %>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= status === 'draft' ? 'active' : '' %>" href="/orders?status=draft<%= q ? '&q=' + q : '' %>">
+          Drafts <% if (counts && counts.draft) { %><span class="badge bg-secondary ms-1"><%= counts.draft %></span><% } %>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= status === 'approved' ? 'active' : '' %>" href="/orders?status=approved<%= q ? '&q=' + q : '' %>">
+          Approved <% if (counts && counts.approved) { %><span class="badge bg-success ms-1"><%= counts.approved %></span><% } %>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= status === 'rejected' ? 'active' : '' %>" href="/orders?status=rejected<%= q ? '&q=' + q : '' %>">
+          Rejected <% if (counts && counts.rejected) { %><span class="badge bg-danger ms-1"><%= counts.rejected %></span><% } %>
+        </a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<!-- Results Table -->
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><strong><%= total %></strong> order<%= total !== 1 ? 's' : '' %> found</span>
+    <% if (status) { %>
+    <a href="/orders<%= q ? '?q=' + q : '' %>" class="btn btn-sm btn-outline-secondary">Clear Filter</a>
+    <% } %>
+  </div>
+  <div class="card-body p-0">
+    <% if (orders.length === 0) { %>
+    <div class="text-center py-5">
+      <p class="text-muted mb-2 fs-4">📦</p>
+      <p class="text-muted">No orders found matching your criteria.</p>
+      <% if (status || q) { %>
+      <a href="/orders" class="btn btn-sm btn-outline-primary">View All Orders</a>
+      <% } %>
+    </div>
+    <% } else { %>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Order Ref</th>
+            <th>Customer</th>
+            <th class="text-end">Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% orders.forEach(function(o) { %>
+          <tr class="cursor-pointer" onclick="window.location.href='/orders/<%= o.id %>'" style="cursor: pointer;">
+            <td><strong><code><%= o.order_ref %></code></strong></td>
+            <td><%= o.customer_name %></td>
+            <td class="text-end">$<%= o.total ? o.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00' %></td>
+            <td>
+              <span class="badge <%= o.status === 'approved' ? 'bg-success' : o.status === 'pending' ? 'bg-warning text-dark' : o.status === 'rejected' ? 'bg-danger' : 'bg-secondary' %>">
+                <%= o.status %>
+              </span>
+            </td>
+            <td><small><%= o.created_at %></small></td>
+            <td>
+              <a href="/orders/<%= o.id %>" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">View</a>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Pagination -->
+  <% if (totalPages > 1) { %>
+  <div class="card-footer">
+    <nav>
+      <ul class="pagination pagination-sm justify-content-center mb-0">
+        <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+          <a class="page-link" href="/orders?page=<%= page - 1 %>&limit=<%= limit %><%= status ? '&status=' + status : '' %><%= q ? '&q=' + q : '' %>">&laquo; Prev</a>
+        </li>
+        <% var startPage = Math.max(1, page - 2); var endPage = Math.min(totalPages, page + 2); %>
+        <% for (var i = startPage; i <= endPage; i++) { %>
+        <li class="page-item <%= i === page ? 'active' : '' %>">
+          <a class="page-link" href="/orders?page=<%= i %>&limit=<%= limit %><%= status ? '&status=' + status : '' %><%= q ? '&q=' + q : '' %>"><%= i %></a>
+        </li>
+        <% } %>
+        <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+          <a class="page-link" href="/orders?page=<%= page + 1 %>&limit=<%= limit %><%= status ? '&status=' + status : '' %><%= q ? '&q=' + q : '' %>">Next &raquo;</a>
+        </li>
+      </ul>
+    </nav>
+    <p class="text-center text-muted small mb-0 mt-1">Page <%= page %> of <%= totalPages %> (<%= total %> total)</p>
+  </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

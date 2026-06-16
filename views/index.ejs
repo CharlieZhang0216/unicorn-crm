@@ -1,0 +1,363 @@
+<%- include('partials/header', { title: 'Dashboard' }) %>
+
+<div class="row mb-4">
+  <div class="col-12">
+    <h2>Dashboard</h2>
+    <p class="text-muted">Welcome back. Here is your team overview for today.</p>
+  </div>
+</div>
+
+<% /* ========== ADMIN VIEW ========== */ %>
+<% if (role === 'admin') { %>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="card border-primary shadow-sm h-100">
+      <div class="card-body text-center">
+        <h1 class="display-4 text-primary"><%= stats.activeCustomers %></h1>
+        <p class="text-muted mb-0">Active Customers</p>
+      </div>
+      <div class="card-footer bg-transparent border-0 text-center">
+        <a href="/customers" class="btn btn-outline-primary btn-sm">View All</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-success shadow-sm h-100">
+      <div class="card-body text-center">
+        <h1 class="display-4 text-success">$<%= stats.monthlyRevenue.toLocaleString() %></h1>
+        <p class="text-muted mb-0">Monthly Revenue</p>
+      </div>
+      <div class="card-footer bg-transparent border-0 text-center">
+        <a href="/reports" class="btn btn-outline-success btn-sm">View Report</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-warning shadow-sm h-100">
+      <div class="card-body text-center">
+        <h1 class="display-4 text-warning"><%= stats.pendingTickets %></h1>
+        <p class="text-muted mb-0">Pending Tickets</p>
+      </div>
+      <div class="card-footer bg-transparent border-0 text-center">
+        <a href="/tickets" class="btn btn-outline-warning btn-sm">View All</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-info shadow-sm h-100">
+      <div class="card-body text-center">
+        <h1 class="display-4 text-info"><%= stats.employeeCount %></h1>
+        <p class="text-muted mb-0">Active Employees</p>
+      </div>
+      <div class="card-footer bg-transparent border-0 text-center">
+        <a href="/profile" class="btn btn-outline-info btn-sm">Team</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Recent Orders</strong>
+        <span class="badge bg-secondary"><%= recentOrders.length %></span>
+      </div>
+      <div class="card-body p-0">
+        <% if (recentOrders.length === 0) { %>
+        <div class="text-center py-4 text-muted">
+          <p class="mb-0 fs-5">📭 No recent orders</p>
+          <small>New orders will appear here once created.</small>
+        </div>
+        <% } else { %>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Order #</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% recentOrders.forEach(function(o) { %>
+              <tr>
+                <td><strong><%= o.order_ref %></strong></td>
+                <td><%= o.customer_name %></td>
+                <td>$<%= (o.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                <td>
+                  <span class="badge <%= o.status === 'pending' ? 'bg-warning text-dark' : o.status === 'approved' ? 'bg-success' : o.status === 'draft' ? 'bg-secondary' : 'bg-info' %>">
+                    <%= o.status %>
+                  </span>
+                </td>
+                <td><small class="text-muted"><%= o.created_at %></small></td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Pending Tickets</strong>
+        <span class="badge bg-warning text-dark"><%= pendingTickets.length %></span>
+      </div>
+      <div class="card-body p-0">
+        <% if (pendingTickets.length === 0) { %>
+        <div class="text-center py-4 text-muted">
+          <p class="mb-0 fs-5">✅ No pending tickets</p>
+          <small>All tickets have been resolved.</small>
+        </div>
+        <% } else { %>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Ticket #</th>
+                <th>Subject</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Assignee</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% pendingTickets.forEach(function(t) { %>
+              <tr>
+                <td><strong><%= t.ticket_ref %></strong></td>
+                <td><%= t.subject %></td>
+                <td>
+                  <span class="badge <%= t.priority === 'High' || t.priority === 'Critical' ? 'bg-danger' : t.priority === 'Medium' ? 'bg-warning text-dark' : 'bg-secondary' %>">
+                    <%= t.priority %>
+                  </span>
+                </td>
+                <td><span class="badge bg-info"><%= t.status %></span></td>
+                <td><%= t.assignee_name || 'Unassigned' %></td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% /* ========== EMPLOYEE VIEW ========== */ %>
+<% } else if (role === 'employee') { %>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-4">
+    <div class="card border-primary shadow-sm h-100">
+      <div class="card-body text-center">
+        <h1 class="display-4 text-primary"><%= orderCount %></h1>
+        <p class="text-muted mb-0">Orders Created</p>
+      </div>
+      <div class="card-footer bg-transparent border-0 text-center">
+        <a href="/orders" class="btn btn-outline-primary btn-sm">View Orders</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>My Assigned Tickets</strong>
+        <span class="badge bg-secondary"><%= assignedTickets.length %></span>
+      </div>
+      <div class="card-body p-0">
+        <% if (assignedTickets.length === 0) { %>
+        <div class="text-center py-4 text-muted">
+          <p class="mb-0 fs-5">🎉 No assigned tickets</p>
+          <small>You have no open tickets assigned to you.</small>
+        </div>
+        <% } else { %>
+        <div class="list-group list-group-flush">
+          <% assignedTickets.forEach(function(t) { %>
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <strong><%= t.ticket_ref %></strong> — <%= t.subject %>
+              </div>
+              <span class="badge <%= t.priority === 'High' || t.priority === 'Critical' ? 'bg-danger' : t.priority === 'Medium' ? 'bg-warning text-dark' : 'bg-secondary' %>">
+                <%= t.priority %>
+              </span>
+            </div>
+            <small class="text-muted">
+              Status: <span class="badge bg-info"><%= t.status %></span> &middot; <%= t.created_at %>
+            </small>
+          </div>
+          <% }); %>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Recent Messages</strong>
+        <span class="badge bg-secondary"><%= recentMessages.length %></span>
+      </div>
+      <div class="card-body p-0">
+        <% if (recentMessages.length === 0) { %>
+        <div class="text-center py-4 text-muted">
+          <p class="mb-0 fs-5">📭 No messages</p>
+          <small>You have no recent messages.</small>
+        </div>
+        <% } else { %>
+        <div class="list-group list-group-flush">
+          <% recentMessages.forEach(function(m) { %>
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+              <strong><%= m.from_name %></strong>
+              <small class="text-muted"><%= m.created_at %></small>
+            </div>
+            <div class="text-truncate">
+              <% if (!m.is_read) { %><span class="badge bg-danger me-1">New</span><% } %>
+              <strong><%= m.subject %></strong>
+            </div>
+            <% if (m.body) { %>
+            <small class="text-muted"><%= m.body.substring(0, 100) %><%= m.body.length > 100 ? '...' : '' %></small>
+            <% } %>
+          </div>
+          <% }); %>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% /* ========== MANAGER VIEW ========== */ %>
+<% } else { %>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="card border-warning shadow-sm h-100">
+      <div class="card-body text-center">
+        <h1 class="display-4 text-warning"><%= pendingApprovals %></h1>
+        <p class="text-muted mb-0">Pending Approvals</p>
+      </div>
+      <div class="card-footer bg-transparent border-0 text-center">
+        <a href="/orders?filter=pending" class="btn btn-outline-warning btn-sm">Review</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-success shadow-sm h-100">
+      <div class="card-body text-center">
+        <h1 class="display-4 text-success"><%= completedThisMonth %></h1>
+        <p class="text-muted mb-0">Completed This Month</p>
+      </div>
+      <div class="card-footer bg-transparent border-0 text-center">
+        <a href="/reports" class="btn btn-outline-success btn-sm">View Report</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm border-warning">
+      <div class="card-header d-flex justify-content-between align-items-center bg-warning bg-opacity-10">
+        <strong>⏳ Pending Approval Orders</strong>
+        <span class="badge bg-warning text-dark"><%= pendingOrders.length %></span>
+      </div>
+      <div class="card-body p-0">
+        <% if (pendingOrders.length === 0) { %>
+        <div class="text-center py-4 text-muted">
+          <p class="mb-0 fs-5">✅ All clear!</p>
+          <small>No orders awaiting approval from your team.</small>
+        </div>
+        <% } else { %>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Order #</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Created By</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% pendingOrders.forEach(function(o) { %>
+              <tr>
+                <td><strong><%= o.order_ref %></strong></td>
+                <td><%= o.customer_name %></td>
+                <td>$<%= (o.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                <td><%= o.created_by_name %></td>
+                <td><small class="text-muted"><%= o.created_at %></small></td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Team Ticket Overview</strong>
+        <span class="badge bg-secondary"><%= teamTickets.length %></span>
+      </div>
+      <div class="card-body p-0">
+        <% if (teamTickets.length === 0) { %>
+        <div class="text-center py-4 text-muted">
+          <p class="mb-0 fs-5">🎉 No open tickets</p>
+          <small>Your team has no pending ticket activity.</small>
+        </div>
+        <% } else { %>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Ticket #</th>
+                <th>Subject</th>
+                <th>Priority</th>
+                <th>Assignee</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% teamTickets.forEach(function(t) { %>
+              <tr>
+                <td><strong><%= t.ticket_ref %></strong></td>
+                <td><%= t.subject %></td>
+                <td>
+                  <span class="badge <%= t.priority === 'High' || t.priority === 'Critical' ? 'bg-danger' : t.priority === 'Medium' ? 'bg-warning text-dark' : 'bg-secondary' %>">
+                    <%= t.priority %>
+                  </span>
+                </td>
+                <td><%= t.assignee_name || 'Unassigned' %></td>
+                <td><span class="badge bg-info"><%= t.status %></span></td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% } %>
+
+<%- include('partials/footer') %>

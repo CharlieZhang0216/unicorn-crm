@@ -1,0 +1,305 @@
+<%- include('partials/header', { title: 'Reports' }) %>
+
+<h2>Reports</h2>
+<p class="text-muted">Sales performance and operational metrics.</p>
+
+<% /* ========== ADMIN REPORTS ========== */ %>
+<% if (role === 'admin') { %>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">📈 Customer Growth Trend (Monthly)</div>
+      <div class="card-body">
+        <% if (customerGrowth.length === 0) { %>
+        <div class="text-center py-4 text-muted">
+          <p class="mb-0">No customer data available yet.</p>
+        </div>
+        <% } else { %>
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th class="text-end">New Customers</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% customerGrowth.forEach(function(row) { %>
+            <tr>
+              <td><%= row.month %></td>
+              <td class="text-end fw-bold"><%= row.new_customers %></td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+      <div class="card-header fw-bold">💰 Revenue by Customer Tier</div>
+      <div class="card-body">
+        <% if (revenueByTier.length === 0) { %>
+        <div class="text-center py-4 text-muted">
+          <p class="mb-0">No revenue data available.</p>
+        </div>
+        <% } else { %>
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>Tier</th>
+              <th class="text-end">Orders</th>
+              <th class="text-end">Total Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% revenueByTier.forEach(function(row) { %>
+            <tr>
+              <td>
+                <span class="badge <%= row.tier === 'A' ? 'bg-success' : row.tier === 'B' ? 'bg-primary' : 'bg-secondary' %>">
+                  Tier <%= row.tier %>
+                </span>
+              </td>
+              <td class="text-end"><%= row.order_count %></td>
+              <td class="text-end fw-bold text-success">$<%= (row.total_revenue || 0).toLocaleString() %></td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">🎫 Ticket Resolution by Status</div>
+      <div class="card-body">
+        <% if (ticketStatusStats.length === 0) { %>
+        <div class="text-center py-4 text-muted">
+          <p class="mb-0">No ticket data available.</p>
+        </div>
+        <% } else { %>
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th class="text-end">Count</th>
+              <th class="text-end">Percentage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% ticketStatusStats.forEach(function(row) {
+              const pct = totalTickets > 0 ? ((row.count / totalTickets) * 100).toFixed(1) : 0;
+            %>
+            <tr>
+              <td>
+                <span class="badge <%= row.status === 'open' ? 'bg-danger' : row.status === 'in_progress' ? 'bg-warning text-dark' : row.status === 'resolved' || row.status === 'closed' ? 'bg-success' : 'bg-secondary' %>">
+                  <%= row.status %>
+                </span>
+              </td>
+              <td class="text-end fw-bold"><%= row.count %></td>
+              <td class="text-end"><%= pct %>%</td>
+            </tr>
+            <% }); %>
+          </tbody>
+          <tfoot class="table-light">
+            <tr>
+              <td><strong>Total</strong></td>
+              <td class="text-end"><strong><%= totalTickets %></strong></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+      <div class="card-header fw-bold">📊 Summary</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-6">
+            <div class="border rounded p-3 text-center">
+              <h4 class="text-primary mb-0"><%= (revenueByTier.reduce(function(s, r){ return s + (r.total_revenue || 0); }, 0)).toLocaleString() %></h4>
+              <small class="text-muted">Total Approved Revenue</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <% const resolvedCount = ticketStatusStats.filter(function(r){ return r.status === 'resolved' || r.status === 'closed'; }).reduce(function(s, r){ return s + r.count; }, 0); %>
+            <div class="border rounded p-3 text-center">
+              <h4 class="text-success mb-0"><%= totalTickets > 0 ? ((resolvedCount / totalTickets) * 100).toFixed(1) : 0 %>%</h4>
+              <small class="text-muted">Resolution Rate</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% /* ========== EMPLOYEE REPORTS ========== */ %>
+<% } else if (role === 'employee') { %>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">📋 My Order Summary</div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tr>
+            <td>Total Orders Created:</td>
+            <td class="fw-bold"><%= myOrdersTotal %></td>
+          </tr>
+          <tr>
+            <td>Approved:</td>
+            <td class="fw-bold text-success"><%= myOrdersApproved %></td>
+          </tr>
+          <tr>
+            <td>Pending Approval:</td>
+            <td class="fw-bold text-warning"><%= myOrdersPending %></td>
+          </tr>
+          <tr>
+            <td>Total Approved Revenue:</td>
+            <td class="fw-bold text-success">$<%= myRevenue.toLocaleString() %></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+      <div class="card-header fw-bold">📅 This Month</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-6">
+            <div class="border rounded p-3 text-center">
+              <h4 class="text-primary mb-0"><%= myMonthlyOrders %></h4>
+              <small class="text-muted">Orders Created</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="border rounded p-3 text-center">
+              <h4 class="text-success mb-0">$<%= myMonthlyRevenue.toLocaleString() %></h4>
+              <small class="text-muted">Revenue</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">🎫 My Ticket Metrics</div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tr>
+            <td>Open / In Progress:</td>
+            <td class="fw-bold text-warning"><%= myTicketsOpen %></td>
+          </tr>
+          <tr>
+            <td>Resolved / Closed:</td>
+            <td class="fw-bold text-success"><%= myTicketsHandled %></td>
+          </tr>
+          <tr>
+            <td>Total Tickets Assigned:</td>
+            <td class="fw-bold"><%= myTicketsOpen + myTicketsHandled %></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% /* ========== MANAGER REPORTS ========== */ %>
+<% } else { %>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">👥 Team Performance Overview</div>
+      <div class="card-body">
+        <% if (teamMembers.length === 0) { %>
+        <div class="text-center py-4 text-muted">
+          <p class="mb-0">No team members found.</p>
+        </div>
+        <% } else { %>
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Department</th>
+              <th class="text-end">Orders</th>
+              <th class="text-end">Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% teamMembers.forEach(function(m) { %>
+            <tr>
+              <td><strong><%= m.full_name %></strong></td>
+              <td><%= m.department %></td>
+              <td class="text-end"><%= m.order_count %></td>
+              <td class="text-end text-success fw-bold">$<%= (m.revenue || 0).toLocaleString() %></td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+      <div class="card-header fw-bold">📊 This Month (Team)</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-6">
+            <div class="border rounded p-3 text-center">
+              <h4 class="text-primary mb-0"><%= teamMonthlyOrders %></h4>
+              <small class="text-muted">Orders Created</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="border rounded p-3 text-center">
+              <h4 class="text-warning mb-0"><%= teamPendingApprovals %></h4>
+              <small class="text-muted">Awaiting Approval</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">✅ Order Approval Rate</div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tr>
+            <td>Total Orders (Team):</td>
+            <td class="fw-bold"><%= approvalRate.total %></td>
+          </tr>
+          <tr>
+            <td>Approved:</td>
+            <td class="fw-bold text-success"><%= approvalRate.approved %></td>
+          </tr>
+          <tr>
+            <td>Approval Rate:</td>
+            <td>
+              <div class="progress" style="height: 24px;">
+                <div class="progress-bar bg-success" role="progressbar"
+                     style="width: <%= approvalRate.rate %>%"
+                     aria-valuenow="<%= approvalRate.rate %>" aria-valuemin="0" aria-valuemax="100">
+                  <%= approvalRate.rate %>%
+                </div>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% } %>
+
+<%- include('partials/footer') %>

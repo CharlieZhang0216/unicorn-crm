@@ -1,0 +1,159 @@
+<%- include('partials/header', { title: 'Support Tickets' }) %>
+
+<h2>Support Tickets</h2>
+<p class="text-muted">Track and manage support requests.</p>
+
+<!-- Search -->
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="GET" action="/tickets" class="row g-2 align-items-end">
+      <div class="col-md-8">
+        <label class="form-label small fw-bold">Search</label>
+        <input type="text" class="form-control" name="q" placeholder="Search by subject, ticket ref, or description..." value="<%= typeof q !== 'undefined' ? q : '' %>">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">&nbsp;</label>
+        <button type="submit" class="btn btn-primary w-100">Search</button>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">&nbsp;</label>
+        <% if (q) { %>
+        <a href="/tickets<%= status ? '?status=' + status : '' %><%= priority ? (status ? '&' : '?') + 'priority=' + priority : '' %>" class="btn btn-outline-secondary w-100">Clear</a>
+        <% } %>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Priority and Status Filters -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body py-2">
+    <div class="row">
+      <div class="col-md-6">
+        <small class="text-muted fw-bold d-block mb-1">Priority</small>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="/tickets<%= '?page=1' %><%= status ? '&status=' + status : '' %><%= q ? '&q=' + q : '' %>" class="btn <%= !priority ? 'btn-primary' : 'btn-outline-primary' %>">
+            All<% if (typeof pCounts !== 'undefined') { var pTotal = 0; for (var k in pCounts) { pTotal += pCounts[k]; } %> <span class="badge bg-light text-dark"><%= pTotal %></span><% } %>
+          </a>
+          <a href="/tickets?priority=Critical<%= status ? '&status=' + status : '' %><%= q ? '&q=' + q : '' %>" class="btn <%= priority === 'Critical' ? 'btn-danger' : 'btn-outline-danger' %>">
+            Critical<% if (pCounts && pCounts.Critical) { %> <span class="badge bg-light text-dark"><%= pCounts.Critical %></span><% } %>
+          </a>
+          <a href="/tickets?priority=High<%= status ? '&status=' + status : '' %><%= q ? '&q=' + q : '' %>" class="btn <%= priority === 'High' ? 'btn-danger' : 'btn-outline-danger' %>">
+            High<% if (pCounts && pCounts.High) { %> <span class="badge bg-light text-dark"><%= pCounts.High %></span><% } %>
+          </a>
+          <a href="/tickets?priority=Medium<%= status ? '&status=' + status : '' %><%= q ? '&q=' + q : '' %>" class="btn <%= priority === 'Medium' ? 'btn-warning' : 'btn-outline-warning' %>">
+            Medium<% if (pCounts && pCounts.Medium) { %> <span class="badge bg-light text-dark"><%= pCounts.Medium %></span><% } %>
+          </a>
+          <a href="/tickets?priority=Low<%= status ? '&status=' + status : '' %><%= q ? '&q=' + q : '' %>" class="btn <%= priority === 'Low' ? 'btn-info' : 'btn-outline-info' %>">
+            Low<% if (pCounts && pCounts.Low) { %> <span class="badge bg-light text-dark"><%= pCounts.Low %></span><% } %>
+          </a>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <small class="text-muted fw-bold d-block mb-1">Status</small>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="/tickets<%= '?page=1' %><%= priority ? '&priority=' + priority : '' %><%= q ? '&q=' + q : '' %>" class="btn <%= !status ? 'btn-primary' : 'btn-outline-primary' %>">
+            All<% if (typeof counts !== 'undefined') { var sTotal = 0; for (var k in counts) { sTotal += counts[k]; } %> <span class="badge bg-light text-dark"><%= sTotal %></span><% } %>
+          </a>
+          <a href="/tickets?status=open<%= priority ? '&priority=' + priority : '' %><%= q ? '&q=' + q : '' %>" class="btn <%= status === 'open' ? 'btn-danger' : 'btn-outline-danger' %>">
+            Open<% if (counts && counts.open) { %> <span class="badge bg-light text-dark"><%= counts.open %></span><% } %>
+          </a>
+          <a href="/tickets?status=in_progress<%= priority ? '&priority=' + priority : '' %><%= q ? '&q=' + q : '' %>" class="btn <%= status === 'in_progress' ? 'btn-warning' : 'btn-outline-warning' %>">
+            In Progress<% if (counts && counts.in_progress) { %> <span class="badge bg-light text-dark"><%= counts.in_progress %></span><% } %>
+          </a>
+          <a href="/tickets?status=resolved<%= priority ? '&priority=' + priority : '' %><%= q ? '&q=' + q : '' %>" class="btn <%= status === 'resolved' ? 'btn-success' : 'btn-outline-success' %>">
+            Resolved<% if (counts && counts.resolved) { %> <span class="badge bg-light text-dark"><%= counts.resolved %></span><% } %>
+          </a>
+          <a href="/tickets?status=closed<%= priority ? '&priority=' + priority : '' %><%= q ? '&q=' + q : '' %>" class="btn <%= status === 'closed' ? 'btn-secondary' : 'btn-outline-secondary' %>">
+            Closed<% if (counts && counts.closed) { %> <span class="badge bg-light text-dark"><%= counts.closed %></span><% } %>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Results -->
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><strong><%= total %></strong> ticket<%= total !== 1 ? 's' : '' %> found</span>
+    <% if (status || priority) { %>
+    <a href="/tickets<%= q ? '?q=' + q : '' %>" class="btn btn-sm btn-outline-secondary">Clear Filters</a>
+    <% } %>
+  </div>
+  <div class="card-body p-0">
+    <% if (tickets.length === 0) { %>
+    <div class="text-center py-5">
+      <p class="text-muted mb-2 fs-4">🎫</p>
+      <p class="text-muted">No tickets found matching your criteria.</p>
+      <% if (status || priority || q) { %>
+      <a href="/tickets" class="btn btn-sm btn-outline-primary">View All Tickets</a>
+      <% } %>
+    </div>
+    <% } else { %>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Ticket Ref</th>
+            <th>Subject</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Assignee</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% tickets.forEach(function(t) { %>
+          <tr class="cursor-pointer" onclick="window.location.href='/tickets/<%= t.id %>'" style="cursor: pointer;">
+            <td><small><code><%= t.ticket_ref %></code></small></td>
+            <td><%= t.subject.length > 60 ? t.subject.substring(0, 60) + '...' : t.subject %></td>
+            <td>
+              <span class="badge <%= t.priority === 'Critical' ? 'bg-danger' : t.priority === 'High' ? 'bg-danger' : t.priority === 'Medium' ? 'bg-warning text-dark' : 'bg-info text-dark' %>">
+                <%= t.priority %>
+              </span>
+            </td>
+            <td>
+              <span class="badge <%= t.status === 'open' ? 'bg-danger' : t.status === 'in_progress' ? 'bg-warning text-dark' : t.status === 'resolved' ? 'bg-success' : 'bg-secondary' %>">
+                <%= t.status.replace('_', ' ') %>
+              </span>
+            </td>
+            <td><small><%= t.assigned_name || 'Unassigned' %></small></td>
+            <td><small><%= t.created_at %></small></td>
+            <td>
+              <a href="/tickets/<%= t.id %>" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">View</a>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Pagination -->
+  <% if (totalPages > 1) { %>
+  <div class="card-footer">
+    <nav>
+      <ul class="pagination pagination-sm justify-content-center mb-0">
+        <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+          <a class="page-link" href="/tickets?page=<%= page - 1 %>&limit=<%= limit %><%= status ? '&status=' + status : '' %><%= priority ? '&priority=' + priority : '' %><%= q ? '&q=' + q : '' %>">&laquo; Prev</a>
+        </li>
+        <% var startPage = Math.max(1, page - 2); var endPage = Math.min(totalPages, page + 2); %>
+        <% for (var i = startPage; i <= endPage; i++) { %>
+        <li class="page-item <%= i === page ? 'active' : '' %>">
+          <a class="page-link" href="/tickets?page=<%= i %>&limit=<%= limit %><%= status ? '&status=' + status : '' %><%= priority ? '&priority=' + priority : '' %><%= q ? '&q=' + q : '' %>"><%= i %></a>
+        </li>
+        <% } %>
+        <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+          <a class="page-link" href="/tickets?page=<%= page + 1 %>&limit=<%= limit %><%= status ? '&status=' + status : '' %><%= priority ? '&priority=' + priority : '' %><%= q ? '&q=' + q : '' %>">Next &raquo;</a>
+        </li>
+      </ul>
+    </nav>
+    <p class="text-center text-muted small mb-0 mt-1">Page <%= page %> of <%= totalPages %> (<%= total %> total)</p>
+  </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

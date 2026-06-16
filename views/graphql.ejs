@@ -1,0 +1,184 @@
+<%- include('partials/header') %>
+<div class="container mt-4">
+  <h2>GraphQL Playground <span class="badge bg-warning text-dark">Admin Only</span></h2>
+  <p class="text-muted">Interactive GraphQL API explorer with authenticated requests.</p>
+
+  <div class="alert alert-info mb-3">
+    <strong>Session:</strong> You are authenticated as <code><%= user.username %></code> (role: <code><%= user.role %></code>).
+    GraphQL requests will use your session cookie automatically.
+  </div>
+
+  <div class="mb-3">
+    <a href="/graphql/introspection" class="btn btn-sm btn-outline-secondary">Open Full Introspection</a>
+    <a href="/api/v1/config" class="btn btn-sm btn-outline-info">API Config</a>
+  </div>
+
+  <!-- Example Queries -->
+  <div class="accordion mb-3" id="examples">
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ex1">
+          Example Queries
+        </button>
+      </h2>
+      <div id="ex1" class="accordion-collapse collapse" data-bs-parent="#examples">
+        <div class="accordion-body">
+          <h6>Get Current User</h6>
+          <pre class="bg-dark text-light p-2 rounded"><code>query {
+  me {
+    id
+    username
+    email
+    full_name
+    role
+    department
+  }
+}</code></pre>
+
+          <h6>List Customers (with search)</h6>
+          <pre class="bg-dark text-light p-2 rounded"><code>query {
+  customers(search: "Crystal", limit: 10, offset: 0) {
+    id
+    company_name
+    contact_name
+    tier
+    status
+  }
+}</code></pre>
+
+          <h6>List Tickets (filtered)</h6>
+          <pre class="bg-dark text-light p-2 rounded"><code>query {
+  tickets(status: "open", priority: "High", limit: 5) {
+    id
+    ticket_ref
+    subject
+    priority
+    status
+    sla_deadline
+  }
+}</code></pre>
+
+          <h6>List Orders</h6>
+          <pre class="bg-dark text-light p-2 rounded"><code>query {
+  orders(status: "pending", limit: 10) {
+    id
+    order_ref
+    total
+    status
+    created_at
+  }
+}</code></pre>
+
+          <% if (user.role === 'admin') { %>
+          <h6>List Users (Admin Only)</h6>
+          <pre class="bg-dark text-light p-2 rounded"><code>query {
+  users(role: "manager", limit: 10) {
+    id
+    username
+    email
+    full_name
+    role
+    department
+  }
+}</code></pre>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GraphiQL-like interface (simple version) -->
+  <div class="card">
+    <div class="card-header">
+      <ul class="nav nav-tabs card-header-tabs">
+        <li class="nav-item">
+          <a class="nav-link active" href="#query-tab" data-bs-toggle="tab">Query</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#result-tab" data-bs-toggle="tab">Result</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#schema-tab" data-bs-toggle="tab">Schema</a>
+        </li>
+      </ul>
+    </div>
+    <div class="card-body tab-content">
+      <div class="tab-pane fade show active" id="query-tab">
+        <label class="form-label">GraphQL Query</label>
+        <textarea id="gqlQuery" class="form-control font-monospace" rows="8" style="background: #1e1e1e; color: #d4d4d4;">query {
+  me {
+    id
+    username
+    full_name
+    role
+    department
+  }
+}</textarea>
+        <div class="mt-2">
+          <label class="form-label">Variables (JSON, optional)</label>
+          <textarea id="gqlVariables" class="form-control font-monospace" rows="2" style="background: #1e1e1e; color: #d4d4d4;"></textarea>
+        </div>
+        <button class="btn btn-primary mt-2" onclick="runQuery()">▶ Execute</button>
+      </div>
+      <div class="tab-pane fade" id="result-tab">
+        <div id="gqlResult" class="p-3" style="background: #f8f9fa; border-radius: 4px; min-height: 200px; font-family: monospace; white-space: pre-wrap;">
+          Click Execute to see results...
+        </div>
+      </div>
+      <div class="tab-pane fade" id="schema-tab">
+        <h6>Available Types</h6>
+        <ul>
+          <li><strong>User</strong> — id, username, email, full_name, role, department, tier, region, phone, quota, created_at, is_active</li>
+          <li><strong>Customer</strong> — id, company_name, contact_name, email, phone, tier, region, status, industry, annual_revenue, notes, created_by, created_at, updated_at</li>
+          <li><strong>Ticket</strong> — id, ticket_ref, subject, description, priority, status, assigned_to, created_by, sla_deadline, created_at, updated_at</li>
+          <li><strong>Order</strong> — id, order_ref, customer_id, total, status, approval_step, approved_by, notes, created_by, created_at, updated_at</li>
+        </ul>
+        <h6>Queries</h6>
+        <ul>
+          <li><strong>me</strong> → User — Current authenticated user</li>
+          <li><strong>users</strong>(id, role, department, limit, offset) → [User] — Admin only</li>
+          <li><strong>customers</strong>(id, search, limit, offset) → [Customer]</li>
+          <li><strong>tickets</strong>(id, status, priority, limit, offset) → [Ticket]</li>
+          <li><strong>orders</strong>(id, status, limit, offset) → [Order]</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function runQuery() {
+  const query = document.getElementById('gqlQuery').value;
+  let variables = {};
+  try {
+    const vText = document.getElementById('gqlVariables').value.trim();
+    if (vText) variables = JSON.parse(vText);
+  } catch(e) {
+    document.getElementById('gqlResult').textContent = 'Invalid JSON variables: ' + e.message;
+    return;
+  }
+
+  document.getElementById('gqlResult').textContent = 'Loading...';
+  document.querySelector('[href="#result-tab"]').click();
+
+  fetch('/graphql', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ query, variables })
+  })
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('gqlResult').textContent = JSON.stringify(data, null, 2);
+    if (data.errors) {
+      document.getElementById('gqlResult').style.background = '#f8d7da';
+    } else {
+      document.getElementById('gqlResult').style.background = '#d4edda';
+    }
+  })
+  .catch(err => {
+    document.getElementById('gqlResult').textContent = 'Network error: ' + err.message;
+    document.getElementById('gqlResult').style.background = '#f8d7da';
+  });
+}
+</script>
+<%- include('partials/footer') %>

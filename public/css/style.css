@@ -1,0 +1,169 @@
+/* Unicorn CRM - Custom Theme */
+
+:root {
+  --primary: #2c3e50;
+  --primary-light: #3498db;
+  --accent: #e74c3c;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --info: #2980b9;
+  --bg-gray: #f8f9fa;
+  --border: #dee2e6;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: var(--bg-gray);
+  color: #333;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container-fluid {
+  flex: 1;
+}
+
+/* Navbar */
+.navbar.bg-primary {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: -0.5px;
+}
+
+.navbar .nav-link {
+  font-size: 0.9rem;
+  padding: 0.5rem 0.8rem !important;
+  transition: background 0.2s;
+}
+
+.navbar .nav-link:hover {
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+}
+
+/* Cards */
+.card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.card-header {
+  background: #f8f9fa;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Tables */
+.table th {
+  background: #f1f3f5;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #495057;
+}
+
+.table td {
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+/* Badges */
+.badge {
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+/* Buttons */
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.btn-primary {
+  background: var(--primary-light);
+  border-color: var(--primary-light);
+}
+
+.btn-outline-primary {
+  color: var(--primary-light);
+  border-color: var(--primary-light);
+}
+
+.btn-outline-primary:hover {
+  background: var(--primary-light);
+  color: white;
+}
+
+/* Forms */
+.form-control, .form-select {
+  border-radius: 6px;
+  border-color: var(--border);
+  font-size: 0.9rem;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.15);
+}
+
+/* Footer */
+footer {
+  font-size: 0.85rem;
+  background: white !important;
+  border-top: 1px solid var(--border) !important;
+}
+
+/* Progress bar */
+.progress {
+  border-radius: 12px;
+  background-color: #e9ecef;
+}
+
+.progress-bar {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Display numbers */
+.display-4 {
+  font-weight: 700;
+}
+
+/* List group */
+.list-group-item {
+  border-color: var(--border);
+}
+
+/* Pre/code */
+pre {
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+code {
+  background: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .display-4 {
+    font-size: 2rem;
+  }
+}

@@ -1,0 +1,169 @@
+<%- include('partials/header', { title: customer.company_name }) %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="mb-0"><%= customer.company_name %></h2>
+    <p class="text-muted mb-0">Customer details and related records.</p>
+  </div>
+  <a href="/customers" class="btn btn-outline-secondary">&larr; Back to Customers</a>
+</div>
+
+<div class="row g-4">
+  <!-- Customer Info Card -->
+  <div class="col-md-5">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center fw-bold">
+        <span>Customer Information</span>
+        <span class="badge <%= customer.tier === 'A' ? 'bg-success' : customer.tier === 'B' ? 'bg-primary' : 'bg-secondary' %> fs-6"><%= customer.tier %></span>
+      </div>
+      <div class="card-body">
+        <table class="table table-sm table-borderless mb-0">
+          <tr>
+            <td class="fw-bold text-muted" style="width: 40%;">Company</td>
+            <td><%= customer.company_name %></td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Contact</td>
+            <td><%= customer.contact_name %></td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Email</td>
+            <td><%= customer.email || '—' %></td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Phone</td>
+            <td><%= customer.phone || '—' %></td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Industry</td>
+            <td><%= customer.industry || '—' %></td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Region</td>
+            <td><%= customer.region || '—' %></td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Status</td>
+            <td>
+              <span class="badge <%= customer.status === 'active' ? 'bg-success' : customer.status === 'inactive' ? 'bg-danger' : 'bg-warning text-dark' %>">
+                <%= customer.status %>
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Annual Revenue</td>
+            <td><%= customer.annual_revenue ? '$' + customer.annual_revenue.toLocaleString() : '—' %></td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Created By</td>
+            <td><%= createdBy ? createdBy.full_name : 'N/A' %></td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Created</td>
+            <td><small><%= customer.created_at %></small></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <% if (customer.notes) { %>
+    <div class="card shadow-sm mt-3">
+      <div class="card-header fw-bold">Notes</div>
+      <div class="card-body">
+        <p class="mb-0" style="white-space: pre-wrap;"><%= customer.notes %></p>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Related Orders & Tickets -->
+  <div class="col-md-7">
+    <!-- Related Orders -->
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center fw-bold">
+        <span>Related Orders (<%= orders.length %>)</span>
+      </div>
+      <div class="card-body p-0">
+        <% if (orders.length === 0) { %>
+        <div class="text-center py-4">
+          <p class="text-muted mb-0">No orders for this customer.</p>
+        </div>
+        <% } else { %>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Order Ref</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% orders.forEach(function(o) { %>
+              <tr class="cursor-pointer" onclick="window.location.href='/orders/<%= o.id %>'" style="cursor: pointer;">
+                <td><strong><%= o.order_ref %></strong></td>
+                <td><%= o.total ? '$' + o.total.toLocaleString() : '$0.00' %></td>
+                <td>
+                  <span class="badge <%= o.status === 'approved' ? 'bg-success' : o.status === 'pending' ? 'bg-warning text-dark' : o.status === 'rejected' ? 'bg-danger' : 'bg-secondary' %>">
+                    <%= o.status %>
+                  </span>
+                </td>
+                <td><small><%= o.created_at %></small></td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Related Tickets -->
+    <div class="card shadow-sm mt-3">
+      <div class="card-header d-flex justify-content-between align-items-center fw-bold">
+        <span>Related Tickets (<%= tickets.length %>)</span>
+      </div>
+      <div class="card-body p-0">
+        <% if (tickets.length === 0) { %>
+        <div class="text-center py-4">
+          <p class="text-muted mb-0">No tickets related to this customer.</p>
+        </div>
+        <% } else { %>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Ticket Ref</th>
+                <th>Subject</th>
+                <th>Priority</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% tickets.forEach(function(t) { %>
+              <tr class="cursor-pointer" onclick="window.location.href='/tickets/<%= t.id %>'" style="cursor: pointer;">
+                <td><small><code><%= t.ticket_ref %></code></small></td>
+                <td><%= t.subject %></td>
+                <td>
+                  <span class="badge <%= t.priority === 'Critical' || t.priority === 'High' ? 'bg-danger' : t.priority === 'Medium' ? 'bg-warning text-dark' : 'bg-info text-dark' %>">
+                    <%= t.priority %>
+                  </span>
+                </td>
+                <td>
+                  <span class="badge <%= t.status === 'open' ? 'bg-danger' : t.status === 'in_progress' ? 'bg-warning text-dark' : t.status === 'resolved' ? 'bg-success' : 'bg-secondary' %>">
+                    <%= t.status %>
+                  </span>
+                </td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

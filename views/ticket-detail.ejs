@@ -1,0 +1,204 @@
+<%- include('partials/header', { title: ticket.subject }) %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="mb-0"><code><%= ticket.ticket_ref %></code>: <%= ticket.subject %></h2>
+    <p class="text-muted mb-0">
+      Created by <%= ticket.creator_name || 'N/A' %> &middot; <%= ticket.created_at %>
+    </p>
+  </div>
+  <a href="/tickets" class="btn btn-outline-secondary">&larr; Back to Tickets</a>
+</div>
+
+<div class="row g-4">
+  <!-- Main Content: Description + Comments -->
+  <div class="col-md-8">
+    <!-- Ticket Description -->
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">Description</div>
+      <div class="card-body">
+        <% if (ticket.description) { %>
+        <p style="white-space: pre-wrap;"><%= ticket.description %></p>
+        <% } else { %>
+        <p class="text-muted mb-0">No description provided.</p>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Comments Timeline -->
+    <div class="card shadow-sm mt-3">
+      <div class="card-header d-flex justify-content-between fw-bold">
+        <span>Comments (<%= comments.length %>)</span>
+      </div>
+      <div class="card-body p-0">
+        <% if (comments.length === 0) { %>
+        <div class="text-center py-4">
+          <p class="text-muted mb-0">No comments yet. Be the first to comment.</p>
+        </div>
+        <% } else { %>
+        <div class="px-3 py-2">
+          <% comments.forEach(function(c) { %>
+          <div class="d-flex mb-3 pb-3 border-bottom">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; font-size: 14px; font-weight: bold;">
+                <%= (c.author_name || 'U').charAt(0).toUpperCase() %>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <div class="d-flex justify-content-between align-items-baseline">
+                <div>
+                  <strong><%= c.author_name %></strong>
+                  <% if (c.author_role) { %>
+                  <span class="badge <%= c.author_role === 'admin' ? 'bg-danger' : c.author_role === 'manager' ? 'bg-warning text-dark' : 'bg-secondary' %> ms-1 small"><%= c.author_role %></span>
+                  <% } %>
+                </div>
+                <small class="text-muted"><%= c.created_at %></small>
+              </div>
+              <div class="mt-1" style="white-space: pre-wrap;"><%= c.content %></div>
+            </div>
+          </div>
+          <% }); %>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Add Comment -->
+    <div class="card shadow-sm mt-3">
+      <div class="card-header fw-bold">Add Comment</div>
+      <div class="card-body">
+        <form method="POST" action="/tickets/<%= ticket.id %>/comment">
+          <div class="mb-3">
+            <textarea class="form-control" name="content" rows="3" placeholder="Type your comment here..." maxlength="5000" required></textarea>
+            <small class="text-muted">Markdown not supported. Max 5000 characters.</small>
+          </div>
+          <button type="submit" class="btn btn-primary">Post Comment</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar: Details & Actions -->
+  <div class="col-md-4">
+    <!-- Details Card -->
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">Ticket Details</div>
+      <div class="card-body">
+        <table class="table table-sm table-borderless mb-0">
+          <tr>
+            <td class="fw-bold text-muted" style="width: 40%;">Status</td>
+            <td>
+              <span class="badge <%= ticket.status === 'open' ? 'bg-danger' : ticket.status === 'in_progress' ? 'bg-warning text-dark' : ticket.status === 'resolved' ? 'bg-success' : 'bg-secondary' %>">
+                <%= ticket.status.replace('_', ' ') %>
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Priority</td>
+            <td>
+              <span class="badge <%= ticket.priority === 'Critical' ? 'bg-danger' : ticket.priority === 'High' ? 'bg-danger' : ticket.priority === 'Medium' ? 'bg-warning text-dark' : 'bg-info text-dark' %>">
+                <%= ticket.priority %>
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Assigned To</td>
+            <td><%= ticket.assigned_name || 'Unassigned' %></td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Created By</td>
+            <td><%= ticket.creator_name || 'N/A' %></td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">SLA Deadline</td>
+            <td><%= ticket.sla_deadline || 'N/A' %></td>
+          </tr>
+          <tr>
+            <td class="fw-bold text-muted">Created</td>
+            <td><small><%= ticket.created_at %></small></td>
+          </tr>
+          <% if (ticket.updated_at && ticket.updated_at !== ticket.created_at) { %>
+          <tr>
+            <td class="fw-bold text-muted">Updated</td>
+            <td><small><%= ticket.updated_at %></small></td>
+          </tr>
+          <% } %>
+        </table>
+      </div>
+    </div>
+
+    <!-- Status Update (server-side controlled visibility) -->
+    <% if (canChangeStatus && allowedStatuses.length > 0) { %>
+    <div class="card shadow-sm mt-3">
+      <div class="card-header fw-bold">Update Status</div>
+      <div class="card-body">
+        <form method="POST" action="/tickets/<%= ticket.id %>/status" id="statusForm">
+          <div class="mb-3">
+            <label class="form-label small fw-bold">New Status</label>
+            <select class="form-select" name="status">
+              <% allowedStatuses.forEach(function(s) { %>
+              <option value="<%= s %>" <%= ticket.status === s ? 'selected' : '' %>>
+                <%= s.replace('_', ' ').replace(/^\w/, function(c) { return c.toUpperCase(); }) %>
+              </option>
+              <% }); %>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Update Status</button>
+        </form>
+        <div id="statusResult" class="mt-2" style="display:none;"></div>
+      </div>
+    </div>
+    <% } else if (ticket.status === 'closed') { %>
+    <div class="card shadow-sm mt-3 border-secondary">
+      <div class="card-header bg-secondary bg-opacity-10 fw-bold">Closed</div>
+      <div class="card-body">
+        <p class="text-muted mb-0">This ticket is closed and cannot be modified.</p>
+      </div>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+(function() {
+  var form = document.getElementById('statusForm');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.textContent = 'Updating...';
+      fetch(form.action, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(new FormData(form))
+      })
+      .then(function(r) {
+        if (r.redirected) { window.location.href = r.url; return; }
+        return r.json();
+      })
+      .then(function(d) {
+        if (d && d.success) { location.reload(); }
+        else if (d) {
+          var el = document.getElementById('statusResult');
+          el.style.display = 'block';
+          el.className = 'mt-2 alert alert-danger';
+          el.textContent = 'Error: ' + d.error;
+          btn.disabled = false;
+          btn.textContent = 'Update Status';
+        }
+      })
+      .catch(function() {
+        var el = document.getElementById('statusResult');
+        el.style.display = 'block';
+        el.className = 'mt-2 alert alert-danger';
+        el.textContent = 'Request failed.';
+        btn.disabled = false;
+        btn.textContent = 'Update Status';
+      });
+    });
+  }
+})();
+</script>
+
+<%- include('partials/footer') %>

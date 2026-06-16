@@ -1,0 +1,245 @@
+<%- include('partials/header') %>
+<div class="container-fluid mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Calendar</h2>
+    <div>
+      <a href="/calendar?view=month" class="btn btn-sm <%= view === 'month' ? 'btn-primary' : 'btn-outline-primary' %>">Month</a>
+      <a href="/calendar?view=week" class="btn btn-sm <%= view === 'week' ? 'btn-primary' : 'btn-outline-primary' %>">Week</a>
+      <a href="/calendar?view=day" class="btn btn-sm <%= view === 'day' ? 'btn-primary' : 'btn-outline-primary' %>">Day</a>
+      <a href="/calendar/export.ics" class="btn btn-sm btn-outline-success ms-2">Export .ics</a>
+    </div>
+  </div>
+
+  <!-- Calendar Grid (Month View) -->
+  <% if (view === 'month') { %>
+  <div class="table-responsive">
+    <table class="table table-bordered">
+      <thead class="table-light">
+        <tr>
+          <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% 
+        const firstDay = new Date(currentYear, currentMonth, 1);
+        const lastDay = new Date(currentYear, currentMonth + 1, 0);
+        const startingDayOfWeek = firstDay.getDay();
+        const daysInMonth = lastDay.getDate();
+        
+        let day = 1;
+        for (let w = 0; w < 6; w++) {
+          if (day > daysInMonth) break;
+        %>
+        <tr>
+        <% for (let d = 0; d < 7; d++) { %>
+          <% if ((w === 0 && d < startingDayOfWeek) || day > daysInMonth) { %>
+            <td class="text-muted" style="height: 100px;"></td>
+          <% } else { 
+            const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+            const dayEvents = events.filter(e => e.start_time && e.start_time.startsWith(dateStr));
+          %>
+            <td style="height: 100px; width: 14.28%; vertical-align: top;" class="<%= dateStr === new Date().toISOString().split('T')[0] ? 'bg-light' : '' %>">
+              <strong><%= day %></strong>
+              <% dayEvents.slice(0, 3).forEach(ev => { %>
+              <div class="small text-truncate mt-1 p-1 rounded" style="background: #d4edda; cursor: pointer;" 
+                   title="<%= ev.title %> (<%= ev.event_type %>)">
+                <span class="badge bg-secondary me-1"><%= ev.event_type %></span><%= ev.title %>
+              </div>
+              <% }) %>
+              <% if (dayEvents.length > 3) { %>
+              <div class="small text-muted">+<%= dayEvents.length - 3 %> more</div>
+              <% } %>
+            </td>
+          <% day++; } %>
+        <% } %>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+  <% } else if (view === 'week') { %>
+  <!-- Week View -->
+  <div class="table-responsive">
+    <table class="table table-bordered">
+      <thead class="table-light">
+        <tr>
+          <% ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach((d,i) => { 
+            const date = new Date(startDate);
+            date.setDate(date.getDate() + i);
+            const ds = date.toISOString().split('T')[0];
+          %>
+          <th><%= d %> <%= date.getDate() %></th>
+          <% }) %>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <% for (let i = 0; i < 7; i++) { 
+            const date = new Date(startDate);
+            date.setDate(date.getDate() + i);
+            const ds = date.toISOString().split('T')[0];
+            const dayEvents = events.filter(e => e.start_time && e.start_time.startsWith(ds));
+          %>
+          <td style="min-height: 150px; vertical-align: top;">
+            <% dayEvents.forEach(ev => { %>
+            <div class="small mb-1 p-1 rounded" style="background: #d4edda;">
+              <strong><%= ev.start_time.split('T')[1]?.substring(0,5) || 'All day' %></strong>
+              <%= ev.title %>
+            </div>
+            <% }) %>
+          </td>
+          <% } %>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <% } else { %>
+  <!-- Day View -->
+  <div class="card">
+    <div class="card-header"><strong><%= startDate %></strong></div>
+    <div class="card-body">
+      <% const dayEvents = events.filter(e => e.start_time && e.start_time.startsWith(startDate)); %>
+      <% if (dayEvents.length === 0) { %>
+      <p class="text-muted">No events for this day.</p>
+      <% } else { %>
+      <div class="list-group">
+        <% dayEvents.forEach(ev => { %>
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between">
+            <h6 class="mb-1"><%= ev.title %></h6>
+            <small><%= ev.start_time %></small>
+          </div>
+          <small class="text-muted">Type: <%= ev.event_type %></small>
+          <% if (ev.description) { %><p class="mb-1 small"><%= ev.description %></p><% } %>
+          <% if (ev.location) { %><small>Location: <%= ev.location %></small><% } %>
+        </div>
+        <% }) %>
+      </div>
+      <% } %>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Event List -->
+  <div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Events (<%= events.length %>)</strong>
+      <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newEventModal">+ New Event</button>
+    </div>
+    <div class="card-body">
+      <% if (events.length === 0) { %>
+      <p class="text-muted">No events in this view.</p>
+      <% } else { %>
+      <div class="list-group">
+        <% events.forEach(ev => { %>
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <span class="badge bg-<%= ev.event_type === 'meeting' ? 'primary' : ev.event_type === 'call' ? 'success' : ev.event_type === 'reminder' ? 'warning' : 'secondary' %> me-2"><%= ev.event_type %></span>
+              <strong><%= ev.title %></strong>
+            </div>
+            <div class="text-end">
+              <small class="text-muted"><%= ev.start_time %></small>
+              <% if (ev.user_id === user.id) { %>
+              <button class="btn btn-sm btn-outline-danger ms-2" onclick="deleteEvent(<%= ev.id %>)">Delete</button>
+              <% } %>
+            </div>
+          </div>
+          <% if (ev.description) { %><p class="mb-1 small ms-2"><%= ev.description %></p><% } %>
+          <div class="small text-muted ms-2">
+            <% if (ev.location) { %>Location: <%= ev.location %> · <% } %>
+            Created by: <%= ev.creator_name %>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<!-- New Event Modal -->
+<div class="modal fade" id="newEventModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="newEventForm">
+        <div class="modal-header">
+          <h5 class="modal-title">New Event</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Title *</label>
+            <input type="text" class="form-control" name="title" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" name="description" rows="2"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Location</label>
+            <input type="text" class="form-control" name="location">
+          </div>
+          <div class="row mb-3">
+            <div class="col">
+              <label class="form-label">Start Time *</label>
+              <input type="datetime-local" class="form-control" name="start_time" required>
+            </div>
+            <div class="col">
+              <label class="form-label">End Time</label>
+              <input type="datetime-local" class="form-control" name="end_time">
+            </div>
+          </div>
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" name="all_day" id="allDay">
+            <label class="form-check-label" for="allDay">All Day</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Type</label>
+            <select class="form-select" name="event_type">
+              <option value="task">Task</option>
+              <option value="meeting">Meeting</option>
+              <option value="call">Call</option>
+              <option value="reminder">Reminder</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('newEventForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  const data = Object.fromEntries(formData.entries());
+  data.all_day = data.all_day === 'on';
+
+  fetch('/calendar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) location.reload();
+    else alert('Error: ' + (d.error || 'Unknown'));
+  });
+});
+
+function deleteEvent(id) {
+  if (!confirm('Delete this event?')) return;
+  fetch('/calendar/' + id, { method: 'DELETE', headers: { 'Accept': 'application/json' } })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) location.reload();
+      else alert('Error: ' + (d.error || 'Unknown'));
+    });
+}
+</script>
+<%- include('partials/footer') %>
