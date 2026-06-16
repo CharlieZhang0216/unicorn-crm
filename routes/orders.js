@@ -165,6 +165,11 @@ router.get('/:id', requireAuth, (req, res) => {
 });
 
 // Approve order (manager/admin, only pending status)
+//
+// BL-5: The approval_step uses a read-modify-write pattern without locking.
+// Two managers approving simultaneously both read step=0, both increment to 1,
+// and both write step=1 — effectively skipping the second approval step.
+// This allows a single-step approval when two-step should have been required.
 router.post('/:id/approve', requireAuth, (req, res) => {
   if (req.currentUser.role !== 'admin' && req.currentUser.role !== 'manager') {
     return res.status(403).json({ error: 'Only managers and admins can approve orders.' });
@@ -183,7 +188,9 @@ router.post('/:id/approve', requireAuth, (req, res) => {
     return res.status(400).json({ error: `Cannot approve order with status "${order.status}". Only pending orders can be approved.` });
   }
 
-  // Server-side step increment (ignore client-provided step)
+  // NOTE: The approval_step is read here but NOT locked.
+  // A concurrent approve from another manager can interleave between
+  // this read and the UPDATE below.
   const nextStep = order.approval_step + 1;
 
   if (nextStep >= 2) {
