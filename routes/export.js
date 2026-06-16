@@ -98,8 +98,36 @@ router.get("/customers", requireAuth, requireAdmin, (req, res) => {
   if (!db) return res.status(500).json({ error: 'Database not available' });
 
   try {
-    const rows = db.prepare('SELECT id, company_name, contact_name, email, phone, tier, region, status, industry, annual_revenue, notes, created_by, created_at, updated_at FROM customers ORDER BY id').all();
-    const headers = ['id', 'name', 'email', 'phone', 'company', 'status', 'created_at'];
+    // BL-3: Client-specified column list with no server-side whitelist.
+    // The frontend sends a columns= parameter to let users pick which
+    // fields to export. This is a legitimate UX feature — different
+    // reports need different column sets. However, the columns parameter
+    // is passed directly into SQL column selection without validation.
+    //
+    // An attacker who intercepts the export request can inject arbitrary
+    // SQL expressions through the columns parameter to extract data from
+    // other tables via subqueries.
+    const requestedColumns = req.query.columns
+      ? req.query.columns.split(',').map(c => c.trim()).filter(Boolean)
+      : ['id', 'company_name', 'contact_name', 'email', 'phone', 'tier',
+         'region', 'status', 'industry', 'annual_revenue', 'notes',
+         'created_by', 'created_at', 'updated_at'];
+
+    // Map display names for CSV header
+    const displayNames = {
+      id: 'ID', company_name: 'Company', contact_name: 'Contact',
+      email: 'Email', phone: 'Phone', tier: 'Tier', region: 'Region',
+      status: 'Status', industry: 'Industry', annual_revenue: 'Revenue',
+      notes: 'Notes', created_by: 'Created By', created_at: 'Created',
+      updated_at: 'Updated'
+    };
+
+    const headers = requestedColumns.map(c => displayNames[c] || c);
+
+    // Build and execute query with client-selected columns
+    const colSQL = requestedColumns.join(', ');
+    const rows = db.prepare(`SELECT ${colSQL} FROM customers ORDER BY id`).all();
+
     sendCSV(res, 'customers_export.csv', headers, rows);
   } catch (err) {
     console.error('Failed to export customers:', err);
