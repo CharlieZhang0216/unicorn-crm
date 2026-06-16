@@ -160,16 +160,17 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error(`[${new Date().toISOString()}] Error:`, err.message);
   if (err.detail) console.error('Detail:', err.detail);
-  if (err.sql) console.error('SQL:', err.sql);
+  // SQL details logged only in development (prevents schema leakage in production logs)
+  if (process.env.NODE_ENV !== 'production' && err.sql) console.error('SQL:', err.sql);
   console.error('Stack:', err.stack);
 
   const status = err.status || 500;
 
   const clientError = {
     status: status,
-    message: status === 500
+    message: status >= 500
       ? 'An internal server error occurred. Our team has been notified.'
-      : err.message || 'An error occurred.'
+      : (status === 404 ? 'The requested resource could not be found.' : 'An error occurred with your request.')
   };
 
   res.status(status);
