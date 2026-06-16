@@ -78,23 +78,13 @@ router.get('/', requireAuth, (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   const isAdmin = user && user.role === 'admin';
 
-  let files;
-  if (isAdmin) {
-    files = db.prepare(`
-      SELECT u.*, us.full_name AS uploaded_by_name
-      FROM uploads u
-      LEFT JOIN users us ON u.uploaded_by = us.id
-      ORDER BY u.created_at DESC
-    `).all();
-  } else {
-    files = db.prepare(`
-      SELECT u.*, us.full_name AS uploaded_by_name
-      FROM uploads u
-      LEFT JOIN users us ON u.uploaded_by = us.id
-      WHERE u.uploaded_by = ?
-      ORDER BY u.created_at DESC
-    `).all(userId);
-  }
+  // All authenticated users can see all documents
+  files = db.prepare(`
+    SELECT u.*, us.full_name AS uploaded_by_name
+    FROM uploads u
+    LEFT JOIN users us ON u.uploaded_by = us.id
+    ORDER BY u.created_at DESC
+  `).all();
 
   res.render('files', {
     title: 'Document Center',
