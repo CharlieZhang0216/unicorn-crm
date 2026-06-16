@@ -1,36 +1,146 @@
 <%- include('partials/header', { title: 'Document Center' }) %>
 
 <h2>Document Center</h2>
-<p class="text-muted">Access shared documents, templates, and resources.</p>
+<p class="text-muted">Upload, manage, and download shared documents and resources.</p>
 
-<div class="card shadow-sm">
-  <div class="card-header fw-bold">Available Files</div>
+<% /* ─── Upload Form ─── */ %>
+<div class="card shadow-sm mb-4">
+  <div class="card-header fw-bold">
+    <i class="bi bi-cloud-upload"></i> Upload Document
+  </div>
   <div class="card-body">
-    <% if (files.length === 0) { %>
-    <p class="text-muted">No files available.</p>
-    <% } else { %>
-    <div class="list-group">
-      <% files.forEach(function(file) { %>
-      <div class="list-group-item d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-file-earmark"></i> <%= file %></span>
-        <a href="/files/download?filename=<%= encodeURIComponent(file) %>" class="btn btn-sm btn-outline-primary">Download</a>
+    <form id="uploadForm" enctype="multipart/form-data">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-8">
+          <input type="file" class="form-control" id="fileInput" name="file" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xlsx,.xls,.csv,.txt" required>
+          <div class="form-text">
+            Allowed: JPG, PNG, GIF, PDF, DOC, DOCX, XLSX, XLS, CSV, TXT &middot; Max 10MB
+          </div>
+        </div>
+        <div class="col-md-4">
+          <button type="submit" class="btn btn-primary w-100" id="uploadBtn">
+            <i class="bi bi-upload"></i> Upload
+          </button>
+        </div>
       </div>
-      <% }); %>
+    </form>
+    <div id="uploadStatus" class="mt-3" style="display:none;"></div>
+  </div>
+</div>
+
+<% /* ─── File List ─── */ %>
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <strong><i class="bi bi-folder2-open"></i> 
+      <% if (isAdmin) { %>All Documents<% } else { %>My Documents<% } %>
+    </strong>
+    <span class="badge bg-secondary"><%= files.length %> file<%= files.length !== 1 ? 's' : '' %></span>
+  </div>
+  <div class="card-body p-0">
+    <% if (files.length === 0) { %>
+    <div class="text-center py-5 text-muted">
+      <p class="fs-4 mb-1">📂</p>
+      <p>No documents yet. Upload your first file above.</p>
+    </div>
+    <% } else { %>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>File</th>
+            <th>Type</th>
+            <th>Size</th>
+            <th>Uploaded</th>
+            <% if (isAdmin) { %><th>By</th><% } %>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% files.forEach(function(file) { %>
+          <tr id="file-row-<%= file.id %>">
+            <td>
+              <strong><%= file.original_name %></strong>
+            </td>
+            <td>
+              <span class="badge bg-light text-dark"><%= file.mime_type.split('/').pop().toUpperCase() %></span>
+            </td>
+            <td><%= formatSize(file.size) %></td>
+            <td class="text-muted small"><%= file.created_at %></td>
+            <% if (isAdmin) { %>
+            <td class="small"><%= file.uploaded_by_name || '—' %></td>
+            <% } %>
+            <td class="text-end">
+              <a href="/files/download?id=<%= file.id %>" class="btn btn-sm btn-outline-primary">Download</a>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteFile('<%= file.id %>')">Delete</button>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
     </div>
     <% } %>
   </div>
 </div>
 
-<div class="mt-3">
-  <div class="card shadow-sm">
-    <div class="card-header fw-bold">Quick Download</div>
-    <div class="card-body">
-      <form action="/files/download" method="GET" class="d-flex gap-2">
-        <input type="text" class="form-control" name="filename" placeholder="Enter filename...">
-        <button type="submit" class="btn btn-primary">Download</button>
-      </form>
-    </div>
-  </div>
-</div>
+<script>
+// ─── Upload handler ───
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const fileInput = document.getElementById('fileInput');
+  const statusEl = document.getElementById('uploadStatus');
+  const btn = document.getElementById('uploadBtn');
+
+  if (!fileInput.files.length) return;
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Uploading...';
+
+  try {
+    const resp = await fetch('/files/upload', { method: 'POST', body: formData });
+    const data = await resp.json();
+    statusEl.style.display = 'block';
+    if (data.success) {
+      statusEl.className = 'alert alert-success';
+      statusEl.innerHTML = '<strong>Uploaded!</strong> ' + data.originalName + ' (' + data.sizeFormatted + '). <a href="javascript:location.reload()">Reload page</a> to see it.';
+      fileInput.value = '';
+    } else {
+      statusEl.className = 'alert alert-danger';
+      statusEl.textContent = 'Error: ' + (data.error || 'Upload failed');
+    }
+  } catch(err) {
+    statusEl.style.display = 'block';
+    statusEl.className = 'alert alert-danger';
+    statusEl.textContent = 'Upload failed: ' + err.message;
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-upload"></i> Upload';
+});
+
+// ─── Delete handler ───
+async function deleteFile(fileId) {
+  if (!confirm('Delete this file? This cannot be undone.')) return;
+  try {
+    const resp = await fetch('/files/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'id=' + encodeURIComponent(fileId)
+    });
+    const data = await resp.json();
+    if (data.success) {
+      const row = document.getElementById('file-row-' + fileId);
+      if (row) row.remove();
+      // Refresh count badge
+      location.reload();
+    } else {
+      alert('Delete failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch(err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+</script>
 
 <%- include('partials/footer') %>
