@@ -35,7 +35,7 @@ router.get('/', requireAuth, requireAdmin, (req, res) => {
 // POST /jobs/:name/run — Trigger job manually
 router.post('/:name/run', requireAuth, requireAdmin, (req, res) => {
   const { name } = req.params;
-  const validJobs = ['daily_report', 'weekly_token_cleanup'];
+  const validJobs = ['daily_report', 'weekly_token_cleanup', 'tier_upgrade'];
 
   if (!validJobs.includes(name)) {
     return res.status(400).json({ error: `Invalid job name. Allowed: ${validJobs.join(', ')}.` });
