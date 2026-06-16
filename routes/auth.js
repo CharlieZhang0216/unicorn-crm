@@ -55,8 +55,8 @@ function renderForgot(res, extra) {
 // ─── Login Rate Limiter (in-memory, per-IP, per-username) ───
 const loginAttempts = new Map();
 const MAX_LOGIN_ATTEMPTS = 5;
-const LOGIN_WINDOW_MS = 15 * 60 * 1000;   // 15 minute window
-const LOGIN_BLOCK_MS = 15 * 60 * 1000;    // 15 minute block after threshold
+const LOGIN_WINDOW_MS = 2 * 60 * 1000;   // 15 minute window
+const LOGIN_BLOCK_MS = 2 * 60 * 1000;    // 15 minute block after threshold
 
 function getClientIP(req) {
   return req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.ip || 'unknown';
@@ -82,7 +82,7 @@ function checkLoginRateLimit(req, res) {
     blockUntil: count >= MAX_LOGIN_ATTEMPTS ? now + LOGIN_BLOCK_MS : 0
   });
   if (count >= MAX_LOGIN_ATTEMPTS) {
-    res.status(429).json({ error: 'Account temporarily locked after too many attempts. Try again in 15 minutes.' });
+    res.status(429).json({ error: 'Account temporarily locked after too many attempts. Try again in 2 minutes.' });
     return true;
   }
   return false;
