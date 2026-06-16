@@ -17,39 +17,6 @@ function validatePasswordStrength(password) {
 }
 
 
-// Rate limiting helper (in-memory)
-const loginAttempts = {};
-const RATE_LIMIT = 5;        // 5 attempts
-const RATE_WINDOW = 15 * 60 * 1000; // 15 minutes
-
-function checkRateLimit(username, ip) {
-  const key = `${username}:${ip}`;
-  const now = Date.now();
-  const record = loginAttempts[key];
-  if (record) {
-    if (now - record.windowStart > RATE_WINDOW) {
-      // Window expired, reset
-      loginAttempts[key] = { windowStart: now, count: 1 };
-      return { blocked: false, remaining: RATE_LIMIT - 1 };
-    }
-    if (record.count >= RATE_LIMIT) {
-      return { blocked: true, retryAfter: Math.ceil((RATE_WINDOW - (now - record.windowStart)) / 1000) };
-    }
-    return { blocked: false, remaining: RATE_LIMIT - record.count };
-  }
-  return { blocked: false, remaining: RATE_LIMIT };
-}
-
-function recordAttempt(username, ip) {
-  const key = `${username}:${ip}`;
-  const now = Date.now();
-  if (!loginAttempts[key] || now - loginAttempts[key].windowStart > RATE_WINDOW) {
-    loginAttempts[key] = { windowStart: now, count: 1 };
-  } else {
-    loginAttempts[key].count++;
-  }
-}
-
 // FIX: CSRF token generation (HMAC-based, no session needed)
 const CSRF_SECRET = crypto.randomBytes(32).toString('hex');
 function generateCSRF() {
@@ -84,7 +51,45 @@ function renderForgot(res, extra) {
 }
 
 // FIXED: Uniform error messages to prevent user enumeration
+
+// ─── Login Rate Limiter (in-memory, per-IP, per-username) ───
+const loginAttempts = new Map();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;   // 15 minute window
+const LOGIN_BLOCK_MS = 15 * 60 * 1000;    // 15 minute block after threshold
+
+function getClientIP(req) {
+  return req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.ip || 'unknown';
+}
+function checkLoginRateLimit(req, res) {
+  const ip = getClientIP(req);
+  const now = Date.now();
+  const entry = loginAttempts.get(ip);
+
+  if (entry && entry.blockUntil && now < entry.blockUntil) {
+    const remaining = Math.ceil((entry.blockUntil - now) / 60000);
+    res.status(429).json({ error: `Too many login attempts. Try again in ${remaining} minute(s).` });
+    return true;
+  }
+  if (entry && now - entry.firstAttempt > LOGIN_WINDOW_MS) {
+    loginAttempts.delete(ip);
+    return false;
+  }
+  const count = entry ? entry.count + 1 : 1;
+  loginAttempts.set(ip, {
+    count,
+    firstAttempt: entry ? entry.firstAttempt : now,
+    blockUntil: count >= MAX_LOGIN_ATTEMPTS ? now + LOGIN_BLOCK_MS : 0
+  });
+  if (count >= MAX_LOGIN_ATTEMPTS) {
+    res.status(429).json({ error: 'Account temporarily locked after too many attempts. Try again in 15 minutes.' });
+    return true;
+  }
+  return false;
+}
+
 router.post('/login', (req, res) => {
+  if (checkLoginRateLimit(req, res)) return;
   const { username, password, _csrf } = req.body;
 
   // FIX: CSRF validation for state-changing operations
@@ -131,7 +136,7 @@ router.post('/login', (req, res) => {
   db.prepare('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
 
   // FIX: httpOnly cookie to prevent XSS access
-  res.cookie('session_token', sessionToken, { httpOnly: true, sameSite: 'strict' });
+  res.cookie('session_token', sessionToken, { httpOnly: true, sameSite: 'strict', secure: true });
   res.redirect('/');
 });
 
