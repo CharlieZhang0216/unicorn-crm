@@ -29,8 +29,13 @@ try {
     });
   }
 } catch (e) {}
-if (!JWT_SECRET || JWT_SECRET === 'placeholder_jwt_secret_replace_in_production') {
+// Prefer env variable first (from dotenv/.env), fallback to random
+if (process.env.JWT_SECRET && process.env.JWT_SECRET.length > 20) {
+  JWT_SECRET = process.env.JWT_SECRET;
+  console.log('[JWT] Using JWT_SECRET from environment (.env persist)');
+} else if (!JWT_SECRET || JWT_SECRET === 'placeholder_jwt_secret_replace_in_production') {
   JWT_SECRET = crypto.randomBytes(64).toString('hex');
+  console.log('[JWT] Generated random JWT_SECRET (not persisted). Set JWT_SECRET in .env for persistence.');
 }
 
 const JWT_ALGORITHM = 'HS256';
@@ -164,4 +169,5 @@ function requireScope(...requiredScopes) {
 }
 
 module.exports = apiAuth;
+module.exports.verifyToken = apiAuth; // For consumption by routes
 module.exports.requireScope = requireScope;
