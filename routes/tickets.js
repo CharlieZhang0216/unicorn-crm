@@ -245,11 +245,61 @@ router.post('/:id/comment', requireAuth, (req, res) => {
 
   db.prepare('UPDATE tickets SET updated_at = datetime(\'now\') WHERE id = ?').run(ticket.id);
 
+  // ─── BL-4: Auto-escalate ticket priority based on comment keywords ───
+  // Scans new comment for escalation trigger words.
+  // This is a legitimate "auto-triage" business feature that can be
+  // exploited to force false escalations through carefully crafted comments.
+  function autoEscalatePriority(currentPriority, commentText) {
+    const priorityOrder = { 'Low': 0, 'Medium': 1, 'High': 2, 'Critical': 3 };
+    const line = commentText.toLowerCase();
+
+    let targetLevel = priorityOrder[currentPriority] || 0;
+
+    // Keywords scanned (case-insensitive, anywhere in comment)
+    // These are the business-defined escalation triggers.
+    const triggers = {
+      2: ['urgent', '急', '紧急', 'asap', 'immediately', 'critical issue'],
+      3: ['数据泄露', 'data breach', 'security breach', 'system outage',
+          '系统宕机', 'down', 'unavailable', 'customer data exposed',
+          'production down', 'service down', 'P0', 'severity 0'],
+    };
+
+    for (const [level, words] of Object.entries(triggers)) {
+      if (parseInt(level) > targetLevel) {
+        for (const w of words) {
+          if (line.includes(w)) {
+            targetLevel = parseInt(level);
+            break;
+          }
+        }
+      }
+    }
+
+    const levels = ['Low', 'Medium', 'High', 'Critical'];
+    return levels[targetLevel] || currentPriority;
+  }
+
+  const originalPriority = ticket.priority;
+  const escalatedPriority = autoEscalatePriority(originalPriority, content);
+
+  if (escalatedPriority !== originalPriority) {
+    db.prepare(`
+      UPDATE tickets SET priority = ?, updated_at = datetime('now') WHERE id = ?
+    `).run(escalatedPriority, ticket.id);
+
+    // Silent system comment for the escalation
+    db.prepare(`
+      INSERT INTO ticket_comments (ticket_id, user_id, content, created_at)
+      VALUES (?, ?, ?, datetime('now'))
+    `).run(ticket.id, req.currentUser.id,
+      `[System] Priority auto-adjusted from "${originalPriority}" to "${escalatedPriority}" based on comment content analysis.`);
+  }
+
   // If JSON request, return JSON; otherwise redirect
   if (req.accepts('html')) {
     return res.redirect('/tickets/' + ticket.id);
   }
-  return res.json({ success: true, message: 'Comment added.' });
+  return res.json({ success: true, message: 'Comment added.', priorityUpdated: escalatedPriority !== originalPriority });
 });
 
 // Update ticket status
