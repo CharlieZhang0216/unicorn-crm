@@ -216,29 +216,47 @@
 <script>
 document.getElementById('newEventForm').addEventListener('submit', function(e) {
   e.preventDefault();
-  const formData = new FormData(this);
-  const data = Object.fromEntries(formData.entries());
+  var formData = new FormData(this);
+  var data = Object.fromEntries(formData.entries());
   data.all_day = data.all_day === 'on';
+
+  var btn = this.querySelector('button[type="submit"]');
+  var origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
 
   fetch('/calendar', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
     body: JSON.stringify(data)
   })
-  .then(r => r.json())
-  .then(d => {
-    if (d.success) location.reload();
-    else alert('Error: ' + (d.error || 'Unknown'));
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      location.reload();
+    } else {
+      alert('Error: ' + (d.error || 'Unknown'));
+      btn.disabled = false;
+      btn.textContent = origText;
+    }
+  })
+  .catch(function(err) {
+    alert('Request failed: ' + err.message + '. Check console for details.');
+    btn.disabled = false;
+    btn.textContent = origText;
   });
 });
 
 function deleteEvent(id) {
   if (!confirm('Delete this event?')) return;
   fetch('/calendar/' + id, { method: 'DELETE', headers: { 'Accept': 'application/json' } })
-    .then(r => r.json())
-    .then(d => {
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
       if (d.success) location.reload();
       else alert('Error: ' + (d.error || 'Unknown'));
+    })
+    .catch(function(err) {
+      alert('Delete failed: ' + err.message);
     });
 }
 </script>
