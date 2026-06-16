@@ -20,16 +20,16 @@ function seed() {
   // =========================================================================
   // USERS: 10 accounts (2 admin, 3 manager, 5 employee)
   // =========================================================================
-  const pwd_admin = hashPassword('admin123');
-  const pwd_zhangwei = hashPassword('ZhangWei@2026');
-  const pwd_lina = hashPassword('LiNa@2026');
-  const pwd_wanglei = hashPassword('WangLei@2026');
-  const pwd_chenxiao = hashPassword('ChenXiao@2026');
-  const pwd_sarah = hashPassword('Sarah@2026');
-  const pwd_james = hashPassword('James@2026');
-  const pwd_emma = hashPassword('Emma@2026');
-  const pwd_liwei = hashPassword('LiWei@2026');
-  const pwd_maria = hashPassword('Maria@2026');
+  const pwd_admin = hashPassword('+EmkVarG!6kcnG$Z');
+  const pwd_zhangwei = hashPassword('rGDdXKq7+e$d^M5Y');
+  const pwd_lina = hashPassword('sZPdAPc7X*4kSN*q');
+  const pwd_wanglei = hashPassword('vFm4Y4-Pyj5vDZnF');
+  const pwd_chenxiao = hashPassword('JLc!2n%ExsS@T!X%');
+  const pwd_sarah = hashPassword('g*F^-Ng@nq7LHNfR');
+  const pwd_james = hashPassword('2gN48NqzFCt8j-4s');
+  const pwd_emma = hashPassword('REuwwSnw+2fn&hTR');
+  const pwd_liwei = hashPassword('_BG-T_CxQg#5HbsK');
+  const pwd_maria = hashPassword('7+gq$*&GbSc2Fp9&');
 
   const insertUser = db.prepare(`
     INSERT INTO users (username, password, email, full_name, phone, department, role, tier, region, quota, onboarding_date, notes, api_token, report_to, created_at, last_login, is_active)
