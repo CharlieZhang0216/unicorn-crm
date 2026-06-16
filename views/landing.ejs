@@ -1,0 +1,60 @@
+<%- include('partials/header', { title: 'Welcome' }) %>
+
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 text-center">
+      <div class="mb-4">
+        <h1 class="display-4 fw-bold text-primary">Unicorn CRM</h1>
+        <p class="lead text-muted">Enterprise Customer Relationship Management</p>
+        <hr class="my-4 w-50 mx-auto">
+      </div>
+
+      <div class="row g-4 mb-5">
+        <div class="col-md-4">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+              <div class="display-6 mb-2">👥</div>
+              <h5>Customer Management</h5>
+              <p class="text-muted small">Track and manage your customer relationships, contacts, and communication history.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+              <div class="display-6 mb-2">📋</div>
+              <h5>Order Processing</h5>
+              <p class="text-muted small">Create, track, and fulfill orders with integrated workflow and approval pipeline.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+              <div class="display-6 mb-2">🎫</div>
+              <h5>Support Tickets</h5>
+              <p class="text-muted small">Manage support requests with priority-based routing and team collaboration.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-primary shadow">
+        <div class="card-body p-4">
+          <h4 class="mb-3">Get Started</h4>
+          <p class="text-muted">Sign in to access your dashboard, or register for a new account.</p>
+          <div class="d-flex justify-content-center gap-3">
+            <a href="/auth/login" class="btn btn-primary btn-lg px-4">Sign In</a>
+            <a href="/auth/register" class="btn btn-outline-primary btn-lg px-4">Register</a>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-muted small mt-4">
+        Unicorn CRM &mdash; Enterprise Edition. All rights reserved.
+      </p>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>
