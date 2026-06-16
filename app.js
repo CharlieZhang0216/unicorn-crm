@@ -80,7 +80,8 @@ app.use(csrfMiddleware);
 
 // Initialize database and seed
 const db = require('./config/database');
-app.locals.db = db;  // Expose db to all routes via app.locals
+app.locals.db = db;
+const { requireAuth } = require('./middleware/auth');
 
 // Check if DB needs seeding
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
@@ -128,7 +129,14 @@ app.use('/tickets', ticketsRouter);
 app.use('/reports', require('./routes/reports'));
 
 // ─── Module 1: File Upload, CSV Export, XML Import ───
-app.use('/upload', require('./routes/upload'));     // MODULE 1: File upload system
+undefined
+
+// MODULE 1: File upload system
+app.get('/upload', requireAuth, (req, res) => {
+  res.render('upload/index', { user: req.currentUser });
+});
+app.use('/upload', require('./routes/upload'));
+
 app.use('/export', require('./routes/export'));     // MODULE 1: CSV export
 app.use('/import', require('./routes/import'));     // MODULE 1: XML import
 

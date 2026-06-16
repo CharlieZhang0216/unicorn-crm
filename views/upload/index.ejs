@@ -1,0 +1,112 @@
+<%- include('../partials/header', { title: 'File Upload - Unicorn CRM' }) %>
+
+<div class="container mt-4">
+  <h2 class="mb-3">File Upload</h2>
+
+  <!-- Upload Area -->
+  <div class="card mb-4">
+    <div class="card-header"><strong>Upload Files</strong></div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label fw-bold">Upload Avatar</label>
+        <input type="file" id="avatarInput" class="form-control mb-2" accept="image/*">
+        <button class="btn btn-primary btn-sm" onclick="uploadAvatar()">Upload Avatar</button>
+        <span id="avatarStatus" class="ms-2 small"></span>
+      </div>
+      <hr>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Upload Attachment</label>
+        <div class="row g-2 mb-2">
+          <div class="col-sm-6">
+            <input type="text" id="entityType" class="form-control form-control-sm" placeholder="Entity type (e.g. customer, order)">
+          </div>
+          <div class="col-sm-6">
+            <input type="number" id="entityId" class="form-control form-control-sm" placeholder="Entity ID">
+          </div>
+        </div>
+        <input type="file" id="attachmentInput" class="form-control mb-2">
+        <button class="btn btn-primary btn-sm" onclick="uploadAttachment()">Upload Attachment</button>
+        <span id="attachmentStatus" class="ms-2 small"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- File List -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>My Uploaded Files</strong>
+      <button class="btn btn-outline-secondary btn-sm" onclick="loadFiles()">Refresh</button>
+    </div>
+    <div class="card-body">
+      <div id="fileList">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function uploadAvatar() {
+  var input = document.getElementById('avatarInput');
+  if (!input.files[0]) return;
+  var formData = new FormData();
+  formData.append('avatar', input.files[0]);
+  var status = document.getElementById('avatarStatus');
+  status.textContent = 'Uploading...';
+  fetch('/upload/avatar', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(d => { status.textContent = d.error ? 'Error: ' + d.error : 'Uploaded: ' + d.filename; })
+    .catch(e => { status.textContent = 'Error: ' + e; });
+}
+
+function uploadAttachment() {
+  var input = document.getElementById('attachmentInput');
+  var entityType = document.getElementById('entityType').value || 'general';
+  var entityId = document.getElementById('entityId').value || 0;
+  if (!input.files[0]) return;
+  var formData = new FormData();
+  formData.append('file', input.files[0]);
+  var status = document.getElementById('attachmentStatus');
+  status.textContent = 'Uploading...';
+  fetch('/upload/attachment/' + entityType + '/' + entityId, { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(d => { status.textContent = d.error ? 'Error: ' + d.error : 'Uploaded: ' + d.filename; })
+    .catch(e => { status.textContent = 'Error: ' + e; });
+}
+
+function loadFiles() {
+  fetch('/upload/files')
+    .then(r => r.json())
+    .then(data => {
+      var list = document.getElementById('fileList');
+      if (!data.files || data.files.length === 0) {
+        list.innerHTML = '<p class="text-muted">No files uploaded yet.</p>';
+        return;
+      }
+      var html = '<table class="table table-sm"><thead><tr><th>Filename</th><th>Type</th><th>Size</th><th>Date</th><th></th></tr></thead><tbody>';
+      data.files.forEach(function(f) {
+        html += '<tr>' +
+          '<td>' + f.original_name + '</td>' +
+          '<td><span class="badge bg-secondary">' + f.mime_type + '</span></td>' +
+          '<td>' + (f.size / 1024).toFixed(1) + ' KB</td>' +
+          '<td><small>' + new Date(f.created_at).toLocaleString() + '</small></td>' +
+          '<td>' +
+            '<a class="btn btn-sm btn-outline-secondary me-1" href="/upload/download/' + f.id + '">Download</a>' +
+            '<button class="btn btn-sm btn-outline-danger" onclick="deleteFile(' + f.id + ')">Delete</button>' +
+          '</td>' +
+        '</tr>';
+      });
+      html += '</tbody></table>';
+      list.innerHTML = html;
+    });
+}
+
+function deleteFile(id) {
+  if (!confirm('Delete this file?')) return;
+  fetch('/upload/' + id, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(() => loadFiles());
+}
+
+loadFiles();
+</script>
+
+<%- include('../partials/footer') %>
